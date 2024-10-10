@@ -9,57 +9,26 @@
         update_cache: yes
         upgrade: dist
 
-    - name: Install dependencies for .NET SDK
-      apt:
-        name: ['wget', 'apt-transport-https', 'ca-certificates']
-        state: present
-
-    - name: Add Microsoft package signing key
-      apt_key:
-        url: https://packages.microsoft.com/keys/microsoft.asc
-        state: present
-
-    - name: Add Microsoft package repository
-      apt_repository:
-        repo: "deb [arch=amd64] https://packages.microsoft.com/ubuntu/22.04/prod jammy main"
-        state: present
-
     - name: Install .NET SDK 8
       apt:
         name: dotnet-sdk-8.0
         state: present
 
-    - name: Create the Hello World .NET application directory
-      file:
-        path: /home/ubuntu/HelloWorldApp
-        state: directory
-
-    - name: Create .NET web project
-      command: dotnet new web -o /home/ubuntu/HelloWorldApp
+    - name: Create Hello World app directory
+      command: dotnet new web -o HelloWorldApp
       args:
-        chdir: /home/ubuntu/HelloWorldApp
+        chdir: /home/ubuntu
 
-    - name: Update Program.cs to display Hello World
-      blockinfile:
-        path: /home/ubuntu/HelloWorldApp/Program.cs
-        block: |
+    - name: Update Program.cs with Hello World code
+      copy:
+        dest: /home/ubuntu/HelloWorldApp/Program.cs
+        content: |
           var builder = WebApplication.CreateBuilder(args);
           var app = builder.Build();
           app.MapGet("/", () => "Hello World!");
           app.Run("http://*:5000");
 
-    - name: Run the .NET application in the background
-      shell: nohup dotnet run &
+    - name: Run the .NET application
+      command: dotnet run
       args:
         chdir: /home/ubuntu/HelloWorldApp
-        creates: /home/ubuntu/HelloWorldApp/nohup.out
-
-    - name: Ensure port 5000 is open in the UFW firewall
-      ufw:
-        rule: allow
-        port: '5000'
-        proto: tcp
-
-    - name: Enable UFW if not enabled
-      ufw:
-        state: enabled
