@@ -15,6 +15,11 @@
         name: dotnet-sdk-8.0
         state: present
 
+    - name: Remove existing HelloWorldApp directory
+      file:
+        path: /home/ubuntu/HelloWorldApp
+        state: absent
+
     - name: Create Hello World app directory
       command: dotnet new web -o HelloWorldApp
       args:
