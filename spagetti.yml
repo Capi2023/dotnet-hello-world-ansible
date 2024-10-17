@@ -153,10 +153,10 @@
                       var manager = VineyardManager.Instance;
                       manager.AddVineyard("Viñedo La Esperanza", "Mendoza", new List<string> { "Malbec", "Cabernet Sauvignon" });
                       manager.AddVineyard("Viñedo El Milagro", "Valle de Napa", new List<string> { "Chardonnay", "Pinot Noir" });
-
+          
                       CreateHostBuilder(args).Build().Run();
                   }
-
+          
                   public static IHostBuilder CreateHostBuilder(string[] args) =>
                       Host.CreateDefaultBuilder(args)
                           .ConfigureWebHostDefaults(webBuilder =>
@@ -164,14 +164,14 @@
                               webBuilder.UseStartup<Startup>();
                           });
               }
-
+          
               public class Startup
               {
                   public void ConfigureServices(IServiceCollection services)
                   {
                       services.AddControllers();
                   }
-
+          
                   public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
                   {
                       if (env.IsDevelopment())
@@ -183,10 +183,10 @@
                           app.UseExceptionHandler("/Home/Error");
                           app.UseHsts();
                       }
-                  
-                      // Cambia o comenta esta línea
-                      // app.UseHttpsRedirection();  // <-- Cambia o elimina esta línea para evitar la redirección a HTTPS.
-                  
+          
+                      // Comenta o elimina esta línea si no usas HTTPS
+                      // app.UseHttpsRedirection();
+          
                       app.UseRouting();
                       app.UseAuthorization();
                       app.UseEndpoints(endpoints =>
@@ -194,6 +194,8 @@
                           endpoints.MapControllers();
                       });
                   }
+              }
+          }
 
     # Construir la aplicación de viñedos
     - name: Construir la aplicación de viñedos
