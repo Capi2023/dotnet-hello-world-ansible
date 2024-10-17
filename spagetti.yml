@@ -205,5 +205,4 @@
       command: dotnet run --urls "http://*:5000"
       args:
         chdir: /home/ubuntu/vineyard_app
-      async: 10
-      poll: 0
+
