@@ -183,7 +183,10 @@
                           app.UseExceptionHandler("/Home/Error");
                           app.UseHsts();
                       }
-                      app.UseHttpsRedirection();
+                  
+                      // Cambia o comenta esta línea
+                      // app.UseHttpsRedirection();  // <-- Cambia o elimina esta línea para evitar la redirección a HTTPS.
+                  
                       app.UseRouting();
                       app.UseAuthorization();
                       app.UseEndpoints(endpoints =>
@@ -191,8 +194,6 @@
                           endpoints.MapControllers();
                       });
                   }
-              }
-          }
 
     # Construir la aplicación de viñedos
     - name: Construir la aplicación de viñedos
