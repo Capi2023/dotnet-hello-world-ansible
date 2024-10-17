@@ -160,3 +160,33 @@
         chdir: /home/ubuntu/vineyard_app
       async: 10
       poll: 0
+
+          - name: Crear archivo de servicio systemd para la aplicación VineyardApp
+      copy:
+        dest: /etc/systemd/system/vineyardapp.service
+        content: |
+          [Unit]
+          Description=VineyardApp .NET Core Application
+          After=network.target
+
+          [Service]
+          WorkingDirectory=/home/ubuntu/vineyard_app
+          ExecStart=/usr/bin/dotnet /home/ubuntu/vineyard_app/bin/Debug/net8.0/vineyard_app.dll --urls "http://0.0.0.0:5000"
+          Restart=always
+          RestartSec=10
+          SyslogIdentifier=vineyardapp
+          User=ubuntu
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Recargar systemd para aplicar los cambios
+      command: systemctl daemon-reload
+
+    - name: Habilitar el servicio para que se inicie automáticamente al arrancar
+      systemd:
+        name: vineyardapp
+        enabled: yes
+        state: started
+
