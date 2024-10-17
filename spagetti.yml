@@ -161,7 +161,7 @@
       async: 10
       poll: 0
 
-          - name: Crear archivo de servicio systemd para la aplicación VineyardApp
+    - name: Crear archivo de servicio systemd para la aplicación VineyardApp
       copy:
         dest: /etc/systemd/system/vineyardapp.service
         content: |
