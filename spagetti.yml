@@ -1,6 +1,7 @@
 ---
 - name: Instalar .NET Core 8 y configurar la aplicación de viñedos
   hosts: 127.0.0.1
+  connection: local
   become: true
   tasks:
     - name: Actualizar el sistema
