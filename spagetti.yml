@@ -1,5 +1,5 @@
 ---
-- name: Instalar .NET Core 8 y configurar la aplicación de viñedos emiliano garcia
+- name: Instalar .NET Core 8 y configurar la aplicación de viñedos
   hosts: 127.0.0.1
   connection: local
   become: yes
@@ -48,7 +48,7 @@
             </PropertyGroup>
           </Project>
 
-    - name: Crear archivo de código fuente
+    - name: Crear archivo de código fuente Program.cs
       copy:
         dest: /home/ubuntu/vineyard_app/Program.cs
         content: |
@@ -110,11 +110,6 @@
                   public string Name { get; set; }
                   public string Location { get; set; }
                   public List<string> Grapes { get; set; }
-
-                  public void PrintDetails()
-                  {
-                      Console.WriteLine($"Vineyard: {Name}, Location: {Location}, Grapes: {string.Join(", ", Grapes)}");
-                  }
               }
 
               public class VineyardManager
@@ -125,7 +120,11 @@
                   {
                       var vineyard = new Vineyard { Name = name, Location = location, Grapes = grapes };
                       vineyards.Add(vineyard);
-                      vineyard.PrintDetails();
+                  }
+
+                  public List<Vineyard> GetVineyards()
+                  {
+                      return vineyards;
                   }
               }
           }
@@ -135,6 +134,8 @@
         dest: /home/ubuntu/vineyard_app/HomeController.cs
         content: |
           using Microsoft.AspNetCore.Mvc;
+          using System.Text;
+          using System.Collections.Generic;
 
           namespace VineyardApp.Controllers
           {
@@ -144,7 +145,24 @@
                   [HttpGet]
                   public IActionResult Index()
                   {
-                      return Content("Bienvenido a la aplicación de Viñedos", "text/plain");
+                      // Crear una instancia de VineyardManager
+                      var vineyardManager = new VineyardManager();
+
+                      // Agregar un viñedo
+                      vineyardManager.AddVineyard("Viñedo San Emiliano", "La Rioja, España", new List<string> { "Tempranillo", "Garnacha" });
+
+                      // Obtener la lista de viñedos
+                      var vineyards = vineyardManager.GetVineyards();
+
+                      // Construir un string con los detalles
+                      var sb = new StringBuilder();
+                      foreach (var vineyard in vineyards)
+                      {
+                          sb.AppendLine($"Vineyard: {vineyard.Name}, Location: {vineyard.Location}, Grapes: {string.Join(", ", vineyard.Grapes)}");
+                      }
+
+                      // Devolver los detalles como contenido
+                      return Content(sb.ToString(), "text/plain", Encoding.UTF8);
                   }
               }
           }
@@ -153,13 +171,6 @@
       command: dotnet build /home/ubuntu/vineyard_app/vineyard_app.csproj
       args:
         chdir: /home/ubuntu/vineyard_app
-
-    - name: Ejecutar la aplicación
-      command: dotnet run --urls "http://0.0.0.0:5000"
-      args:
-        chdir: /home/ubuntu/vineyard_app
-      async: 10
-      poll: 0
 
     - name: Crear archivo de servicio systemd para la aplicación VineyardApp
       copy:
@@ -188,5 +199,4 @@
       systemd:
         name: vineyardapp
         enabled: yes
-        state: started
-
+        state: restarted
