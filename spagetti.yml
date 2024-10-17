@@ -59,7 +59,7 @@
           using Microsoft.Extensions.Hosting;
           using Microsoft.AspNetCore.Builder;
           using Microsoft.Extensions.DependencyInjection;
-
+          
           namespace VineyardApp
           {
               public class Program
@@ -68,7 +68,7 @@
                   {
                       CreateHostBuilder(args).Build().Run();
                   }
-
+          
                   public static IHostBuilder CreateHostBuilder(string[] args) =>
                       Host.CreateDefaultBuilder(args)
                           .ConfigureWebHostDefaults(webBuilder =>
@@ -76,14 +76,16 @@
                               webBuilder.UseStartup<Startup>();
                           });
               }
-
+          
               public class Startup
               {
                   public void ConfigureServices(IServiceCollection services)
                   {
                       services.AddControllers();
+                      // Registramos VineyardManager como Singleton
+                      services.AddSingleton<VineyardManager>();
                   }
-
+          
                   public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
                   {
                       if (env.IsDevelopment())
@@ -104,23 +106,43 @@
                       });
                   }
               }
-
+          
               public class Vineyard
               {
                   public string Name { get; set; }
                   public string Location { get; set; }
                   public List<string> Grapes { get; set; }
-
+          
                   public void PrintDetails()
                   {
                       Console.WriteLine($"Vineyard: {Name}, Location: {Location}, Grapes: {string.Join(", ", Grapes)}");
                   }
               }
-
+          
               public class VineyardManager
               {
+                  private static VineyardManager _instance;
+                  private static readonly object _lock = new object();
                   private List<Vineyard> vineyards = new List<Vineyard>();
-
+          
+                  // Constructor privado para evitar instanciación externa
+                  private VineyardManager() { }
+          
+                  public static VineyardManager Instance
+                  {
+                      get
+                      {
+                          lock (_lock)
+                          {
+                              if (_instance == null)
+                              {
+                                  _instance = new VineyardManager();
+                              }
+                              return _instance;
+                          }
+                      }
+                  }
+          
                   public void AddVineyard(string name, string location, List<string> grapes)
                   {
                       var vineyard = new Vineyard { Name = name, Location = location, Grapes = grapes };
