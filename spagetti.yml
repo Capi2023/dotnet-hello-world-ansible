@@ -1,7 +1,6 @@
 ---
 - name: Instalar .NET Core 8 y configurar la aplicación de viñedos emiliano garcia
-  hosts: 127.0.0.1
-  connection: local
+  hosts: localhost
   become: yes
   tasks:
     - name: Actualizar el sistema
@@ -94,10 +93,10 @@
                           app.UseExceptionHandler("/Home/Error");
                           app.UseHsts();
                       }
-                      // Cambiado para usar solo HTTP
-                      // app.UseHttpsRedirection();
+
                       app.UseRouting();
                       app.UseAuthorization();
+
                       app.UseEndpoints(endpoints =>
                       {
                           endpoints.MapControllers();
@@ -126,6 +125,25 @@
                       var vineyard = new Vineyard { Name = name, Location = location, Grapes = grapes };
                       vineyards.Add(vineyard);
                       vineyard.PrintDetails();
+                  }
+              }
+          }
+
+    - name: Crear archivo HomeController.cs
+      copy:
+        dest: /home/ubuntu/vineyard_app/HomeController.cs
+        content: |
+          using Microsoft.AspNetCore.Mvc;
+
+          namespace VineyardApp.Controllers
+          {
+              [Route("/")]
+              public class HomeController : Controller
+              {
+                  [HttpGet]
+                  public IActionResult Index()
+                  {
+                      return Content("Bienvenido a la aplicación de Viñedos", "text/plain");
                   }
               }
           }
