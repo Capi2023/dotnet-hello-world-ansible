@@ -236,12 +236,12 @@
               }
           }
 
-- name: Construir la aplicación de hotel
+    - name: Construir la aplicación de hotel
       command: dotnet build /home/ubuntu/hotel/hotelbooking.csproj
       args:
         chdir: /home/ubuntu/hotel
 
-- name: Ejecutar la aplicación de hotel
-      command: dotnet run --urls "http://*:5000"
+    - name: Ejecutar la aplicación de hotel
+      command: dotnet run --urls "http://0.0.0.0:5000"
       args:
         chdir: /home/ubuntu/hotel
