@@ -1,0 +1,202 @@
+---
+- name: Instalar .NET Core 8 y configurar la aplicación de viñedos
+  hosts: 127.0.0.1
+  connection: local
+  become: yes
+  tasks:
+    - name: Actualizar el sistema
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Instalar dependencias necesarias
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Descargar el paquete de repositorio de Microsoft para Ubuntu 24.04 LTS
+      command: wget https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
+
+    - name: Instalar el paquete de repositorio de Microsoft
+      command: dpkg -i /tmp/packages-microsoft-prod.deb
+
+    - name: Actualizar el caché de apt después de agregar el repositorio
+      apt:
+        update_cache: yes
+
+    - name: Instalar .NET SDK
+      apt:
+        name: dotnet-sdk-8.0
+        state: present
+
+    - name: Crear directorio para la aplicación
+      file:
+        path: /home/ubuntu/vineyard_app
+        state: directory
+
+    - name: Crear archivo del proyecto
+      copy:
+        dest: /home/ubuntu/vineyard_app/vineyard_app.csproj
+        content: |
+          <Project Sdk="Microsoft.NET.Sdk.Web">
+            <PropertyGroup>
+              <TargetFramework>net8.0</TargetFramework>
+            </PropertyGroup>
+          </Project>
+
+    - name: Crear archivo de código fuente Program.cs
+      copy:
+        dest: /home/ubuntu/vineyard_app/Program.cs
+        content: |
+          using System;
+          using System.Collections.Generic;
+          using Microsoft.AspNetCore.Hosting;
+          using Microsoft.Extensions.Hosting;
+          using Microsoft.AspNetCore.Builder;
+          using Microsoft.Extensions.DependencyInjection;
+
+          namespace VineyardApp
+          {
+              public class Program
+              {
+                  public static void Main(string[] args)
+                  {
+                      CreateHostBuilder(args).Build().Run();
+                  }
+
+                  public static IHostBuilder CreateHostBuilder(string[] args) =>
+                      Host.CreateDefaultBuilder(args)
+                          .ConfigureWebHostDefaults(webBuilder =>
+                          {
+                              webBuilder.UseStartup<Startup>();
+                          });
+              }
+
+              public class Startup
+              {
+                  public void ConfigureServices(IServiceCollection services)
+                  {
+                      services.AddControllers();
+                  }
+
+                  public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+                  {
+                      if (env.IsDevelopment())
+                      {
+                          app.UseDeveloperExceptionPage();
+                      }
+                      else
+                      {
+                          app.UseExceptionHandler("/Home/Error");
+                          app.UseHsts();
+                      }
+
+                      app.UseRouting();
+                      app.UseAuthorization();
+
+                      app.UseEndpoints(endpoints =>
+                      {
+                          endpoints.MapControllers();
+                      });
+                  }
+              }
+
+              public class Vineyard
+              {
+                  public string Name { get; set; }
+                  public string Location { get; set; }
+                  public List<string> Grapes { get; set; }
+              }
+
+              public class VineyardManager
+              {
+                  private List<Vineyard> vineyards = new List<Vineyard>();
+
+                  public void AddVineyard(string name, string location, List<string> grapes)
+                  {
+                      var vineyard = new Vineyard { Name = name, Location = location, Grapes = grapes };
+                      vineyards.Add(vineyard);
+                  }
+
+                  public List<Vineyard> GetVineyards()
+                  {
+                      return vineyards;
+                  }
+              }
+          }
+
+    - name: Crear archivo HomeController.cs
+      copy:
+        dest: /home/ubuntu/vineyard_app/HomeController.cs
+        content: |
+          using Microsoft.AspNetCore.Mvc;
+          using System.Text;
+          using System.Collections.Generic;
+
+          namespace VineyardApp.Controllers
+          {
+              [Route("/")]
+              public class HomeController : Controller
+              {
+                  [HttpGet]
+                  public IActionResult Index()
+                  {
+                      // Crear una instancia de VineyardManager
+                      var vineyardManager = new VineyardManager();
+
+                      // Agregar un viñedo
+                      vineyardManager.AddVineyard("Viñedo San Emiliano", "La Rioja, España", new List<string> { "Tempranillo", "Garnacha" });
+
+                      // Obtener la lista de viñedos
+                      var vineyards = vineyardManager.GetVineyards();
+
+                      // Construir un string con los detalles
+                      var sb = new StringBuilder();
+                      foreach (var vineyard in vineyards)
+                      {
+                          sb.AppendLine($"Vineyard: {vineyard.Name}, Location: {vineyard.Location}, Grapes: {string.Join(", ", vineyard.Grapes)}");
+                      }
+
+                      // Devolver los detalles como contenido
+                      return Content(sb.ToString(), "text/plain", Encoding.UTF8);
+                  }
+              }
+          }
+
+    - name: Construir la aplicación de viñedos
+      command: dotnet build /home/ubuntu/vineyard_app/vineyard_app.csproj
+      args:
+        chdir: /home/ubuntu/vineyard_app
+
+    - name: Crear archivo de servicio systemd para la aplicación VineyardApp
+      copy:
+        dest: /etc/systemd/system/vineyardapp.service
+        content: |
+          [Unit]
+          Description=VineyardApp .NET Core Application
+          After=network.target
+
+          [Service]
+          WorkingDirectory=/home/ubuntu/vineyard_app
+          ExecStart=/usr/bin/dotnet /home/ubuntu/vineyard_app/bin/Debug/net8.0/vineyard_app.dll --urls "http://0.0.0.0:5000"
+          Restart=always
+          RestartSec=10
+          SyslogIdentifier=vineyardapp
+          User=ubuntu
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Recargar systemd para aplicar los cambios
+      command: systemctl daemon-reload
+
+    - name: Habilitar el servicio para que se inicie automáticamente al arrancar
+      systemd:
+        name: vineyardapp
+        enabled: yes
+        state: restarted
