@@ -1,5 +1,5 @@
 ---
-- name: Instalar .NET Core 8 y configurar la aplicación de viñedos
+- name: Instalar .NET Core 8 y configurar la aplicación de hotel
   hosts: 127.0.0.1
   connection: local
   become: yes
@@ -33,14 +33,14 @@
         name: dotnet-sdk-8.0
         state: present
 
-    - name: Crear directorio para la aplicación
+    - name: Crear directorio para la aplicación de hotel
       file:
-        path: /home/ubuntu/vineyard_app
+        path: /home/ubuntu/hotel
         state: directory
 
     - name: Crear archivo del proyecto
       copy:
-        dest: /home/ubuntu/vineyard_app/vineyard_app.csproj
+        dest: /home/ubuntu/hotel/hotelbooking.csproj
         content: |
           <Project Sdk="Microsoft.NET.Sdk.Web">
             <PropertyGroup>
@@ -50,153 +50,198 @@
 
     - name: Crear archivo de código fuente Program.cs
       copy:
-        dest: /home/ubuntu/vineyard_app/Program.cs
+        dest: /home/ubuntu/hotel/Program.cs
         content: |
           using System;
           using System.Collections.Generic;
-          using Microsoft.AspNetCore.Hosting;
-          using Microsoft.Extensions.Hosting;
-          using Microsoft.AspNetCore.Builder;
-          using Microsoft.Extensions.DependencyInjection;
-
-          namespace VineyardApp
+          
+          // Singleton para el Hotel
+          namespace HotelBooking
           {
-              public class Program
+              public class Hotel
               {
-                  public static void Main(string[] args)
+                  private static Hotel _instance;
+                  public string Name { get; set; }
+                  public List<Room> Rooms { get; private set; } = new List<Room>();
+                  private List<IReservationObserver> observers = new List<IReservationObserver>();
+          
+                  // Singleton: Método para obtener la única instancia del hotel
+                  public static Hotel Instance
                   {
-                      CreateHostBuilder(args).Build().Run();
-                  }
-
-                  public static IHostBuilder CreateHostBuilder(string[] args) =>
-                      Host.CreateDefaultBuilder(args)
-                          .ConfigureWebHostDefaults(webBuilder =>
-                          {
-                              webBuilder.UseStartup<Startup>();
-                          });
-              }
-
-              public class Startup
-              {
-                  public void ConfigureServices(IServiceCollection services)
-                  {
-                      services.AddControllers();
-                  }
-
-                  public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-                  {
-                      if (env.IsDevelopment())
+                      get
                       {
-                          app.UseDeveloperExceptionPage();
+                          if (_instance == null)
+                          {
+                              _instance = new Hotel { Name = "Luxury Inn" };
+                          }
+                          return _instance;
+                      }
+                  }
+          
+                  // Método para agregar habitaciones usando el Factory Method
+                  public void AddRoom(IRoomFactory roomFactory)
+                  {
+                      var room = roomFactory.CreateRoom();
+                      Rooms.Add(room);
+                  }
+          
+                  // Observer: Método para suscribir observadores
+                  public void Subscribe(IReservationObserver observer)
+                  {
+                      observers.Add(observer);
+                  }
+          
+                  // Observer: Método para notificar a los observadores
+                  public void NotifyObservers(Reservation reservation)
+                  {
+                      foreach (var observer in observers)
+                      {
+                          observer.Update(reservation);
+                      }
+                  }
+          
+                  public void PrintAvailableRooms()
+                  {
+                      foreach (var room in Rooms)
+                      {
+                          Console.WriteLine($"Room: {room.RoomType}, Price: {room.Price}");
+                      }
+                  }
+              }
+          
+              // Observer: Interfaz para notificar sobre los cambios de reserva
+              public interface IReservationObserver
+              {
+                  void Update(Reservation reservation);
+              }
+          
+              // Observer: Clase que implementa el observador (Servicio de limpieza)
+              public class CleaningService : IReservationObserver
+              {
+                  public void Update(Reservation reservation)
+                  {
+                      Console.WriteLine($"Cleaning Service notified about the reservation for room: {reservation.Room.RoomType} from {reservation.StartDate} to {reservation.EndDate}.");
+                  }
+              }
+          
+              // Clase Room
+              public class Room
+              {
+                  public string RoomType { get; set; }
+                  public double Price { get; set; }
+              }
+          
+              // Factory Method: Interfaz para la fábrica de habitaciones
+              public interface IRoomFactory
+              {
+                  Room CreateRoom();
+              }
+          
+              // Factories concretas para diferentes tipos de habitaciones
+              public class SingleRoomFactory : IRoomFactory
+              {
+                  public Room CreateRoom()
+                  {
+                      return new Room { RoomType = "Single", Price = 100 };
+                  }
+              }
+          
+              public class DoubleRoomFactory : IRoomFactory
+              {
+                  public Room CreateRoom()
+                  {
+                      return new Room { RoomType = "Double", Price = 200 };
+                  }
+              }
+          
+              // Strategy: Interfaz para definir estrategias de reserva
+              public interface IReservationStrategy
+              {
+                  void Reserve(Hotel hotel, string roomType, DateTime startDate, DateTime endDate);
+              }
+          
+              // Estrategia de reserva estándar
+              public class StandardReservationStrategy : IReservationStrategy
+              {
+                  public void Reserve(Hotel hotel, string roomType, DateTime startDate, DateTime endDate)
+                  {
+                      var room = hotel.Rooms.Find(r => r.RoomType == roomType);
+                      if (room != null)
+                      {
+                          var reservation = new Reservation { Hotel = hotel, Room = room, StartDate = startDate, EndDate = endDate };
+                          hotel.NotifyObservers(reservation); // Notificar a los observadores
+                          Console.WriteLine($"Standard Reservation made for {room.RoomType} from {startDate} to {endDate}.");
                       }
                       else
                       {
-                          app.UseExceptionHandler("/Home/Error");
-                          app.UseHsts();
+                          Console.WriteLine("Room not available.");
                       }
-
-                      app.UseRouting();
-                      app.UseAuthorization();
-
-                      app.UseEndpoints(endpoints =>
+                  }
+              }
+          
+              // Estrategia de reserva VIP
+              public class VIPReservationStrategy : IReservationStrategy
+              {
+                  public void Reserve(Hotel hotel, string roomType, DateTime startDate, DateTime endDate)
+                  {
+                      var room = hotel.Rooms.Find(r => r.RoomType == roomType);
+                      if (room != null)
                       {
-                          endpoints.MapControllers();
-                      });
+                          var reservation = new Reservation { Hotel = hotel, Room = room, StartDate = startDate, EndDate = endDate };
+                          hotel.NotifyObservers(reservation); // Notificar a los observadores
+                          Console.WriteLine($"VIP Reservation made for {room.RoomType} with exclusive benefits from {startDate} to {endDate}.");
+                      }
+                      else
+                      {
+                          Console.WriteLine("VIP Room not available.");
+                      }
                   }
               }
-
-              public class Vineyard
+          
+              // Clase Reservation
+              public class Reservation
               {
-                  public string Name { get; set; }
-                  public string Location { get; set; }
-                  public List<string> Grapes { get; set; }
+                  public Hotel Hotel { get; set; }
+                  public Room Room { get; set; }
+                  public DateTime StartDate { get; set; }
+                  public DateTime EndDate { get; set; }
               }
-
-              public class VineyardManager
+          
+              class Program
               {
-                  private List<Vineyard> vineyards = new List<Vineyard>();
-
-                  public void AddVineyard(string name, string location, List<string> grapes)
+                  static void Main(string[] args)
                   {
-                      var vineyard = new Vineyard { Name = name, Location = location, Grapes = grapes };
-                      vineyards.Add(vineyard);
-                  }
-
-                  public List<Vineyard> GetVineyards()
-                  {
-                      return vineyards;
+                      // Singleton: Obtención de la instancia única del hotel
+                      var hotel = Hotel.Instance;
+          
+                      // Factory Method: Crear habitaciones usando fábricas
+                      hotel.AddRoom(new SingleRoomFactory());
+                      hotel.AddRoom(new DoubleRoomFactory());
+          
+                      // Observer: Crear servicio de limpieza y suscribirlo a las notificaciones
+                      var cleaningService = new CleaningService();
+                      hotel.Subscribe(cleaningService);
+          
+                      // Strategy: Realizar una reserva estándar
+                      IReservationStrategy standardStrategy = new StandardReservationStrategy();
+                      standardStrategy.Reserve(hotel, "Single", DateTime.Now, DateTime.Now.AddDays(2));
+          
+                      // Strategy: Realizar una reserva VIP
+                      IReservationStrategy vipStrategy = new VIPReservationStrategy();
+                      vipStrategy.Reserve(hotel, "Double", DateTime.Now, DateTime.Now.AddDays(3));
+          
+                      // Imprimir habitaciones disponibles
+                      hotel.PrintAvailableRooms();
                   }
               }
           }
 
-    - name: Crear archivo HomeController.cs
-      copy:
-        dest: /home/ubuntu/vineyard_app/HomeController.cs
-        content: |
-          using Microsoft.AspNetCore.Mvc;
-          using System.Text;
-          using System.Collections.Generic;
-
-          namespace VineyardApp.Controllers
-          {
-              [Route("/")]
-              public class HomeController : Controller
-              {
-                  [HttpGet]
-                  public IActionResult Index()
-                  {
-                      // Crear una instancia de VineyardManager
-                      var vineyardManager = new VineyardManager();
-
-                      // Agregar un viñedo
-                      vineyardManager.AddVineyard("Viñedo San Emiliano", "La Rioja, España", new List<string> { "Tempranillo", "Garnacha" });
-
-                      // Obtener la lista de viñedos
-                      var vineyards = vineyardManager.GetVineyards();
-
-                      // Construir un string con los detalles
-                      var sb = new StringBuilder();
-                      foreach (var vineyard in vineyards)
-                      {
-                          sb.AppendLine($"Vineyard: {vineyard.Name}, Location: {vineyard.Location}, Grapes: {string.Join(", ", vineyard.Grapes)}");
-                      }
-
-                      // Devolver los detalles como contenido
-                      return Content(sb.ToString(), "text/plain", Encoding.UTF8);
-                  }
-              }
-          }
-
-    - name: Construir la aplicación de viñedos
-      command: dotnet build /home/ubuntu/vineyard_app/vineyard_app.csproj
+- name: Construir la aplicación de hotel
+      command: dotnet build /home/ubuntu/hotel/hotelbooking.csproj
       args:
-        chdir: /home/ubuntu/vineyard_app
+        chdir: /home/ubuntu/hotel
 
-    - name: Crear archivo de servicio systemd para la aplicación VineyardApp
-      copy:
-        dest: /etc/systemd/system/vineyardapp.service
-        content: |
-          [Unit]
-          Description=VineyardApp .NET Core Application
-          After=network.target
-
-          [Service]
-          WorkingDirectory=/home/ubuntu/vineyard_app
-          ExecStart=/usr/bin/dotnet /home/ubuntu/vineyard_app/bin/Debug/net8.0/vineyard_app.dll --urls "http://0.0.0.0:5000"
-          Restart=always
-          RestartSec=10
-          SyslogIdentifier=vineyardapp
-          User=ubuntu
-          Environment=ASPNETCORE_ENVIRONMENT=Production
-
-          [Install]
-          WantedBy=multi-user.target
-
-    - name: Recargar systemd para aplicar los cambios
-      command: systemctl daemon-reload
-
-    - name: Habilitar el servicio para que se inicie automáticamente al arrancar
-      systemd:
-        name: vineyardapp
-        enabled: yes
-        state: restarted
+    - name: Ejecutar la aplicación de hotel
+      command: dotnet run --urls "http://0.0.0.0:5000"
+      args:
+        chdir: /home/ubuntu/hotel
