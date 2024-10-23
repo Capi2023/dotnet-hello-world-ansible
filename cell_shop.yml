@@ -103,6 +103,7 @@
                       });
                   }
               }
+          
               // Punto numero 1: Uso de campos públicos en la clase Mobile, lo que rompe el encapsulamiento y viola el principio de ocultación de datos
               // Se soluciono al encapsular los campos utilizando propiedades con métodos get y set
               // Clase Mobile mejorada con encapsulamiento
@@ -112,7 +113,7 @@
                   private string _brand;
                   private double _price;
                   private List<string> _features = new List<string>();
-                  
+          
                   // Punto numero 1 aplicado aqui
                   // Propiedades con métodos get y set
                   public string Model
@@ -174,28 +175,50 @@
                           mobile.PrintDetails();
                       }
                   }
-          
-                  // Método largo y complejo sin modularizar
+
+                  // Numero 2: Método ProcessSale en StoreManager es largo y tiene múltiples responsabilidades, lo que dificulta el mantenimiento
+                  // Solución: Dividir el método en varios métodos más pequeños y específicos, cada uno con una única responsabilidad
+                  // Usando: Single Responsibility Principle (SRP)
+                  // 1. Buscar el móvil
+                  // 2. Verificar si el móvil fue encontrado
+                  // 3. Procesar la venta
                   public void ProcessSale(string model, int quantity)
                   {
-                      Mobile mobile = null;
-                      foreach (var m in mobiles)
-                      {
-                          if (m.Model == model)
-                          {
-                              mobile = m;
-                              break;
-                          }
-                      }
+                      Mobile mobile = FindMobileByModel(model);
                       if (mobile != null)
                       {
-                          Console.WriteLine($"Processing sale for {quantity} units of {mobile.Model}");
-                          // Código adicional para procesar la venta...
+                          ProcessSaleForMobile(mobile, quantity);
                       }
                       else
                       {
-                          Console.WriteLine("Mobile not found");
+                          HandleMobileNotFound(model);
                       }
+                  }
+          
+                  // Método para buscar un móvil por su modelo
+                  private Mobile FindMobileByModel(string model)
+                  {
+                      foreach (var mobile in mobiles)
+                      {
+                          if (mobile.Model == model)
+                          {
+                              return mobile;
+                          }
+                      }
+                      return null;
+                  }
+          
+                  // Método para procesar la venta si el móvil fue encontrado
+                  private void ProcessSaleForMobile(Mobile mobile, int quantity)
+                  {
+                      Console.WriteLine($"Processing sale for {quantity} units of {mobile.Model}");
+                      // Código adicional para procesar la venta...
+                  }
+          
+                  // Método para manejar el caso de móvil no encontrado
+                  private void HandleMobileNotFound(string model)
+                  {
+                      Console.WriteLine($"Mobile {model} not found");
                   }
               }
           
@@ -236,6 +259,7 @@
                   }
               }
           }
+
 
     - name: Construir la aplicación de hotel
       command: dotnet build /home/ubuntu/cell/cell.csproj
