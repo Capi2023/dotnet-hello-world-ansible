@@ -40,7 +40,7 @@
 
     - name: Crear archivo del proyecto
       copy:
-        dest: /home/ubuntu/hotel/cell.csproj
+        dest: /home/ubuntu/cell/cell.csproj
         content: |
           <Project Sdk="Microsoft.NET.Sdk.Web">
             <PropertyGroup>
@@ -257,24 +257,56 @@
                   }
               }
           
-              public class Promotion
+              // Interfaz IDiscountStrategy para aplicar el patrón Strategy
+              public interface IDiscountStrategy
+              {
+                  void ApplyDiscount(Mobile mobile);
+              }
+          
+              // Estrategia de descuento para BrandX
+              public class BrandXDiscountStrategy : IDiscountStrategy
               {
                   public void ApplyDiscount(Mobile mobile)
                   {
-                      if (mobile.Brand == "BrandX")
-                      {
-                          mobile.Price *= 0.9;
-                          Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
-                      }
-                      else if (mobile.Brand == "BrandY")
-                      {
-                          mobile.Price *= 0.85;
-                          Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
-                      }
-                      else
-                      {
-                          Console.WriteLine("No discount available for this brand.");
-                      }
+                      mobile.Price *= 0.9;
+                      Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
+                  }
+              }
+          
+              // Estrategia de descuento para BrandY
+              public class BrandYDiscountStrategy : IDiscountStrategy
+              {
+                  public void ApplyDiscount(Mobile mobile)
+                  {
+                      mobile.Price *= 0.85;
+                      Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
+                  }
+              }
+          
+              // Estrategia de descuento predeterminada cuando no hay descuentos disponibles
+              public class NoDiscountStrategy : IDiscountStrategy
+              {
+                  public void ApplyDiscount(Mobile mobile)
+                  {
+                      Console.WriteLine("No discount available for this brand.");
+                  }
+              }
+          
+              // Clase Promotion que utiliza el patrón Strategy para aplicar descuentos
+              public class Promotion
+              {
+                  private IDiscountStrategy _discountStrategy;
+          
+                  // Constructor que permite establecer una estrategia de descuento
+                  public Promotion(IDiscountStrategy discountStrategy)
+                  {
+                      _discountStrategy = discountStrategy;
+                  }
+          
+                  // Método para aplicar el descuento
+                  public void ApplyDiscount(Mobile mobile)
+                  {
+                      _discountStrategy.ApplyDiscount(mobile);
                   }
               }
           }
