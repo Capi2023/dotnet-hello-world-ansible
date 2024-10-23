@@ -353,38 +353,38 @@
         group: ubuntu
         mode: '0644'
 
-  - name: Construir la aplicación de cell
-      command: dotnet build
-      args:
-        chdir: /home/ubuntu/cell
-      become_user: ubuntu
-
-    - name: Crear archivo de servicio systemd para la aplicación
-      copy:
-        dest: /etc/systemd/system/cell.service
-        content: |
-          [Unit]
-          Description=Cell Shop Application
-          After=network.target
-
-          [Service]
-          WorkingDirectory=/home/ubuntu/cell
-          ExecStart=/usr/bin/dotnet /home/ubuntu/cell/bin/Debug/net8.0/cell.dll --urls "http://0.0.0.0:5000"
-          Restart=always
-          RestartSec=10
-          SyslogIdentifier=cell-app
-          User=ubuntu
-          Environment=ASPNETCORE_ENVIRONMENT=Production
-
-          [Install]
-          WantedBy=multi-user.target
-      mode: '0644'
-
-    - name: Recargar systemd
-      command: systemctl daemon-reload
-
-    - name: Iniciar y habilitar la aplicación cell shop
-      systemd:
-        name: cell.service
-        state: started
-        enabled: yes
+    - name: Construir la aplicación de cell
+        command: dotnet build
+        args:
+          chdir: /home/ubuntu/cell
+        become_user: ubuntu
+  
+      - name: Crear archivo de servicio systemd para la aplicación
+        copy:
+          dest: /etc/systemd/system/cell.service
+          content: |
+            [Unit]
+            Description=Cell Shop Application
+            After=network.target
+  
+            [Service]
+            WorkingDirectory=/home/ubuntu/cell
+            ExecStart=/usr/bin/dotnet /home/ubuntu/cell/bin/Debug/net8.0/cell.dll --urls "http://0.0.0.0:5000"
+            Restart=always
+            RestartSec=10
+            SyslogIdentifier=cell-app
+            User=ubuntu
+            Environment=ASPNETCORE_ENVIRONMENT=Production
+  
+            [Install]
+            WantedBy=multi-user.target
+        mode: '0644'
+  
+      - name: Recargar systemd
+        command: systemctl daemon-reload
+  
+      - name: Iniciar y habilitar la aplicación cell shop
+        systemd:
+          name: cell.service
+          state: started
+          enabled: yes
