@@ -354,10 +354,10 @@
         mode: '0644'
 
     - name: Construir la aplicación de cell
-        command: dotnet build
-        args:
-          chdir: /home/ubuntu/cell
-        become_user: ubuntu
+      command: dotnet build
+      args:
+        chdir: /home/ubuntu/cell
+      become_user: ubuntu
   
     - name: Crear archivo de servicio systemd para la aplicación
       copy:
