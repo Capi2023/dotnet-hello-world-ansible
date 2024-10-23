@@ -341,7 +341,6 @@
                       Console.WriteLine("Current inventory:");
                       foreach (var mobile in inventory)
                       {
-                          mobiles.Add(mobile);
                           mobile.PrintDetails();
                       }
                   }
