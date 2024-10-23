@@ -24,9 +24,7 @@
         dest: /tmp/packages-microsoft-prod.deb
 
     - name: Instalar el paquete de repositorio de Microsoft
-      dpkg:
-        name: /tmp/packages-microsoft-prod.deb
-        state: present
+      command: dpkg -i /tmp/packages-microsoft-prod.deb
 
     - name: Actualizar el caché de apt después de agregar el repositorio
       apt:
