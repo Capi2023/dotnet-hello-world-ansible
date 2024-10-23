@@ -175,7 +175,7 @@
                           mobile.PrintDetails();
                       }
                   }
-
+          
                   // Numero 2: Método ProcessSale en StoreManager es largo y tiene múltiples responsabilidades, lo que dificulta el mantenimiento
                   // Solución: Dividir el método en varios métodos más pequeños y específicos, cada uno con una única responsabilidad
                   // Usando: Single Responsibility Principle (SRP)
@@ -222,15 +222,34 @@
                   }
               }
           
-              public class InventoryAndBilling
+              // Punto numero 3: La clase InventoryAndBilling mezcla responsabilidades de inventario y facturación, violando el principio de responsabilidad única
+              // Solución: Separar la clase en dos clases distintas: InventoryManager y BillingManager
+              // Usando: Single Responsibility Principle (SRP)
+          
+              public class InventoryManager
               {
                   private List<Mobile> inventory = new List<Mobile>();
           
+                  // Responsabilidad única: Gestionar el inventario
                   public void AddToInventory(Mobile mobile)
                   {
                       inventory.Add(mobile);
+                      Console.WriteLine($"Mobile {mobile.Model} added to inventory.");
                   }
           
+                  public void PrintInventory()
+                  {
+                      Console.WriteLine("Current inventory:");
+                      foreach (var mobile in inventory)
+                      {
+                          mobile.PrintDetails();
+                      }
+                  }
+              }
+          
+              public class BillingManager
+              {
+                  // Responsabilidad única: Gestionar la facturación
                   public void GenerateBill(Mobile mobile, int quantity)
                   {
                       double total = mobile.Price * quantity;
