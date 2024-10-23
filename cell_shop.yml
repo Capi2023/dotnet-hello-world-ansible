@@ -151,19 +151,46 @@
                   }
               }
           
-              public class StoreManager
-              {
-                  public List<Mobile> mobiles = new List<Mobile>();
+              // Punto 5: Creación directa de objetos Mobile en StoreManager, lo que dificulta la extensión y el mantenimiento.
+              // Solución: Utilizar el patrón Factory Method para encapsular la creación de objetos Mobile.
+              // Usando: Factory Method Pattern
           
-                  public void AddMobile(string model, string brand, double price, List<string> features)
+              // Interfaz IMobileFactory para el Factory Method
+              public interface IMobileFactory
+              {
+                  Mobile CreateMobile(string model, string brand, double price, List<string> features);
+              }
+          
+              // Implementación de la fábrica concreta
+              public class MobileFactory : IMobileFactory
+              {
+                  public Mobile CreateMobile(string model, string brand, double price, List<string> features)
                   {
-                      var mobile = new Mobile
+                      return new Mobile
                       {
                           Model = model,
                           Brand = brand,
                           Price = price,
                           Features = features
                       };
+                  }
+              }
+          
+              public class StoreManager
+              {
+                  public List<Mobile> mobiles = new List<Mobile>();
+                  private readonly IMobileFactory _mobileFactory;
+          
+                  // Constructor que acepta una fábrica de móviles
+                  public StoreManager(IMobileFactory mobileFactory)
+                  {
+                      _mobileFactory = mobileFactory;
+                  }
+          
+                  // Uso del Factory Method para crear un nuevo Mobile
+                  public void AddMobile(string model, string brand, double price, List<string> features)
+                  {
+                      var mobile = _mobileFactory.CreateMobile(model, brand, price, features);
                       mobiles.Add(mobile);
                       mobile.PrintDetails();
                   }
@@ -257,6 +284,8 @@
                   }
               }
           
+              // Punto 4: Código acoplado en la clase Promotion, con lógica específica para cada marca dentro del método ApplyDiscount.
+              // Implementar el patrón Strategy creando una interfaz IDiscountStrategy y clases concretas para cada estrategia de descuento.
               // Interfaz IDiscountStrategy para aplicar el patrón Strategy
               public interface IDiscountStrategy
               {
@@ -310,6 +339,7 @@
                   }
               }
           }
+
 
 
     - name: Construir la aplicación de hotel
