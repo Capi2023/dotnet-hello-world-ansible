@@ -60,7 +60,7 @@
       copy:
         dest: /home/ubuntu/cell/Program.cs
         content: |
-          using System;
+          using System; 
           using System.Collections.Generic;
           using Microsoft.AspNetCore.Hosting;
           using Microsoft.Extensions.Hosting;
@@ -184,15 +184,59 @@
                   }
               }
           
+              // Punto 6: Necesidad de asegurar una única instancia de StoreManager para manejar el inventario de manera consistente.
+              // Solución: Aplicar el patrón Singleton en la clase StoreManager para garantizar una única instancia.
+              // Usando: Singleton Pattern
+          
               public class StoreManager
               {
+                  private static StoreManager _instance = null;
+                  private static readonly object _lock = new object();
                   public List<Mobile> mobiles = new List<Mobile>();
                   private readonly IMobileFactory _mobileFactory;
           
-                  // Constructor que acepta una fábrica de móviles
-                  public StoreManager(IMobileFactory mobileFactory)
+                  // Constructor privado para evitar instanciación directa
+                  private StoreManager(IMobileFactory mobileFactory)
                   {
                       _mobileFactory = mobileFactory;
+                  }
+
+                  private List<IObserver> observers = new List<IObserver>();
+
+                  // Implementación de métodos de la interfaz ISubject para gestionar observadores
+                  public void Subscribe(IObserver observer)
+                  {
+                      observers.Add(observer);
+                  }
+              
+                  public void Unsubscribe(IObserver observer)
+                  {
+                      observers.Remove(observer);
+                  }
+              
+                  public void NotifyObservers()
+                  {
+                      foreach (var observer in observers)
+                      {
+                          observer.Update();
+                      }
+                  }
+          
+                  // Método estático para obtener la única instancia de StoreManager
+                  public static StoreManager GetInstance(IMobileFactory mobileFactory)
+                  {
+                      // Implementación del patrón Singleton con doble verificación de bloqueo
+                      if (_instance == null)
+                      {
+                          lock (_lock)
+                          {
+                              if (_instance == null)
+                              {
+                                  _instance = new StoreManager(mobileFactory);
+                              }
+                          }
+                      }
+                      return _instance;
                   }
           
                   // Uso del Factory Method para crear un nuevo Mobile
@@ -201,6 +245,12 @@
                       var mobile = _mobileFactory.CreateMobile(model, brand, price, features);
                       mobiles.Add(mobile);
                       mobile.PrintDetails();
+                      // Punto 7: Falta de notificación a otros componentes cuando cambia el inventario, causando inconsistencias.
+                      // Solución: Implementar el patrón Observer para que los componentes interesados puedan suscribirse y recibir actualizaciones.
+                      // Se implementaron los métodos Subscribe, Unsubscribe y NotifyObservers en StoreManager,
+                      // y se agregó la notificación al agregar un móvil mediante el método NotifyObservers.
+
+                      NotifyObservers();  // Notificar a los observadores sobre el cambio en el inventario
                   }
           
                   public void PrintAllMobiles()
@@ -256,7 +306,21 @@
                       Console.WriteLine($"Mobile {model} not found");
                   }
               }
+              
+              // Interfaz IObserver que define cómo los componentes observadores recibirán actualizaciones
+              public interface IObserver
+              {
+                  void Update();
+              }
           
+              // Interfaz ISubject que define cómo el sujeto maneja suscriptores
+              public interface ISubject
+              {
+                  void Subscribe(IObserver observer);
+                  void Unsubscribe(IObserver observer);
+                  void NotifyObservers();
+              }
+              
               // Punto numero 3: La clase InventoryAndBilling mezcla responsabilidades de inventario y facturación, violando el principio de responsabilidad única
               // Solución: Separar la clase en dos clases distintas: InventoryManager y BillingManager
               // Usando: Single Responsibility Principle (SRP)
@@ -277,6 +341,7 @@
                       Console.WriteLine("Current inventory:");
                       foreach (var mobile in inventory)
                       {
+                          mobiles.Add(mobile);
                           mobile.PrintDetails();
                       }
                   }
@@ -347,6 +412,7 @@
                   }
               }
           }
+
         owner: ubuntu
         group: ubuntu
         mode: '0644'
