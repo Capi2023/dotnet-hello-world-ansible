@@ -2,6 +2,12 @@
 
 ## Repositorio que va a guardar todos los codigos de ansible para Ubuntu 24
 
+### Link de sapgetti
+[Link del video de spagetti](https://asciinema.org/a/kPlyPs75srcSQpSZUatBphmRu)
+
+[![asciicast](https://asciinema.org/a/kPlyPs75srcSQpSZUatBphmRu.svg)](https://asciinema.org/a/kPlyPs75srcSQpSZUatBphmRu)
+
+
 ### Link de hotel
 [Link del video de hotel](https://asciinema.org/a/KWb0ML4AbkAfiwOKQVu4asyKf)
 
