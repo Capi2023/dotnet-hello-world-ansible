@@ -1,4 +1,6 @@
-# dotnet-hello-world-ansible
+# Ansible repositorio
+
+## Repositorio que va a guardar todos los codigos de ansible para Ubuntu 24
 
 ### Link de hotel
 [Link del video de hotel](https://asciinema.org/a/KWb0ML4AbkAfiwOKQVu4asyKf)
