@@ -18,3 +18,10 @@
 [Link del video de cell shop](https://asciinema.org/connect/1193247b-9bfd-45e5-9536-8d841be9582e)
 
 [![asciicast](https://asciinema.org/a/1VD8TvHkDzLsrlaLtt8Qxve3u.svg)](https://asciinema.org/a/1VD8TvHkDzLsrlaLtt8Qxve3u)
+
+## Link de musica
+
+
+[Link del video de musica](https://asciinema.org/a/uQhnaFcLcgVZSK6Uw8VJuXZn1)
+
+[![asciicast](https://asciinema.org/a/uQhnaFcLcgVZSK6Uw8VJuXZn1.svg)](https://asciinema.org/a/uQhnaFcLcgVZSK6Uw8VJuXZn1)
