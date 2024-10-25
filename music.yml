@@ -60,358 +60,97 @@
       copy:
         dest: /home/ubuntu/musica/Program.cs
         content: |
-          using System; 
-          using System.Collections.Generic;
-          using Microsoft.AspNetCore.Hosting;
-          using Microsoft.Extensions.Hosting;
-          using Microsoft.AspNetCore.Builder;
-          using Microsoft.Extensions.DependencyInjection;
+          using System;
           
-          namespace MobileStoreApp
+          // 1. Abstracción: Crear una interfaz común para todos los instrumentos.
+          // Esto asegura que MusicStore no esté acoplado a implementaciones específicas
+          public interface IInstrument
           {
-              public class Program
-              {
-                  public static void Main(string[] args)
-                  {
-                      CreateHostBuilder(args).Build().Run();
-                  }
+              void Play();
+          }
           
-                  public static IHostBuilder CreateHostBuilder(string[] args) =>
-                      Host.CreateDefaultBuilder(args)
-                          .ConfigureWebHostDefaults(webBuilder =>
-                          {
-                              webBuilder.UseStartup<Startup>();
-                          });
+          // 2. Implementación de la interfaz para la guitarra.
+          public class Guitar : IInstrument
+          {
+              public void Play()
+              {
+                  Console.WriteLine("Playing a guitar.");
+              }
+          }
+          
+          // 3. Implementación de la interfaz para el piano.
+          public class Piano : IInstrument
+          {
+              public void Play()
+              {
+                  Console.WriteLine("Playing a piano.");
+              }
+          }
+          
+          // 4. Aplicación del patrón Factory Method.
+          // Creamos una interfaz de fábrica para desacoplar la creación de instancias de los instrumentos.
+          public interface IInstrumentFactory
+          {
+              IInstrument CreateInstrument();
+          }
+          
+          // 5. Crear una clase de fábrica para la guitarra.
+          // Cada clase de fábrica se encarga de crear el instrumento específico.
+          public class GuitarFactory : IInstrumentFactory
+          {
+              public IInstrument CreateInstrument()
+              {
+                  return new Guitar();
+              }
+          }
+          
+          // 6. Crear una clase de fábrica para el piano.
+          public class PianoFactory : IInstrumentFactory
+          {
+              public IInstrument CreateInstrument()
+              {
+                  return new Piano();
+              }
+          }
+          
+          // 7. Clase MusicStore con bajo acoplamiento y uso del patrón Open/Closed.
+          // Ahora MusicStore no depende de las implementaciones concretas, solo de la interfaz y las fábricas.
+          public class MusicStore
+          {
+              private readonly IInstrumentFactory _instrumentFactory;
+          
+              // 8. Inversión de Dependencias: Inyectamos la fábrica a través del constructor.
+              // Esto hace que las pruebas unitarias sean más sencillas y reduce el acoplamiento.
+              public MusicStore(IInstrumentFactory instrumentFactory)
+              {
+                  _instrumentFactory = instrumentFactory;
               }
           
-              public class Startup
+              // 9. PlayInstrument delega la creación de los instrumentos a la fábrica inyectada.
+              public void PlayInstrument()
               {
-                  public void ConfigureServices(IServiceCollection services)
-                  {
-                      services.AddControllers();
-                  }
-          
-                  public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-                  {
-                      if (env.IsDevelopment())
-                      {
-                          app.UseDeveloperExceptionPage();
-                      }
-                      else
-                      {
-                          app.UseExceptionHandler("/Home/Error");
-                          app.UseHsts();
-                      }
-                      app.UseHttpsRedirection();
-                      app.UseRouting();
-                      app.UseAuthorization();
-                      app.UseEndpoints(endpoints =>
-                      {
-                          endpoints.MapControllers();
-                      });
-                  }
+                  var instrument = _instrumentFactory.CreateInstrument();
+                  instrument.Play();
               }
+          }
           
-              // Punto numero 1: Uso de campos públicos en la clase Mobile, lo que rompe el encapsulamiento y viola el principio de ocultación de datos
-              // Se soluciono al encapsular los campos utilizando propiedades con métodos get y set
-              // Clase Mobile mejorada con encapsulamiento
-              public class Mobile
+          // 10. Ejemplo de uso en el Main.
+          // Podemos agregar nuevos instrumentos sin modificar la clase MusicStore.
+          public class Program
+          {
+              public static void Main(string[] args)
               {
-                  private string _model;
-                  private string _brand;
-                  private double _price;
-                  private List<string> _features = new List<string>();
+                  // Prueba con la guitarra
+                  var guitarStore = new MusicStore(new GuitarFactory());
+                  guitarStore.PlayInstrument();
           
-                  // Punto numero 1 aplicado aqui
-                  // Propiedades con métodos get y set
-                  public string Model
-                  {
-                      get { return _model; }
-                      set { _model = value; }
-                  }
-          
-                  public string Brand
-                  {
-                      get { return _brand; }
-                      set { _brand = value; }
-                  }
-          
-                  public double Price
-                  {
-                      get { return _price; }
-                      set { _price = value; }
-                  }
-          
-                  public List<string> Features
-                  {
-                      get { return _features; }
-                      set { _features = value; }
-                  }
-          
-                  public void PrintDetails()
-                  {
-                      Console.WriteLine($"Model: {Model}, Brand: {Brand}, Price: {Price:C}");
-                      Console.WriteLine("Features:");
-                      foreach (var feature in Features)
-                      {
-                          Console.WriteLine($"- {feature}");
-                      }
-                  }
-              }
-          
-              // Punto 5: Creación directa de objetos Mobile en StoreManager, lo que dificulta la extensión y el mantenimiento.
-              // Solución: Utilizar el patrón Factory Method para encapsular la creación de objetos Mobile.
-              // Usando: Factory Method Pattern
-          
-              // Interfaz IMobileFactory para el Factory Method
-              public interface IMobileFactory
-              {
-                  Mobile CreateMobile(string model, string brand, double price, List<string> features);
-              }
-          
-              // Implementación de la fábrica concreta
-              public class MobileFactory : IMobileFactory
-              {
-                  public Mobile CreateMobile(string model, string brand, double price, List<string> features)
-                  {
-                      return new Mobile
-                      {
-                          Model = model,
-                          Brand = brand,
-                          Price = price,
-                          Features = features
-                      };
-                  }
-              }
-          
-              // Punto 6: Necesidad de asegurar una única instancia de StoreManager para manejar el inventario de manera consistente.
-              // Solución: Aplicar el patrón Singleton en la clase StoreManager para garantizar una única instancia.
-              // Usando: Singleton Pattern
-          
-              public class StoreManager
-              {
-                  private static StoreManager _instance = null;
-                  private static readonly object _lock = new object();
-                  public List<Mobile> mobiles = new List<Mobile>();
-                  private readonly IMobileFactory _mobileFactory;
-          
-                  // Constructor privado para evitar instanciación directa
-                  private StoreManager(IMobileFactory mobileFactory)
-                  {
-                      _mobileFactory = mobileFactory;
-                  }
-
-                  private List<IObserver> observers = new List<IObserver>();
-
-                  // Implementación de métodos de la interfaz ISubject para gestionar observadores
-                  public void Subscribe(IObserver observer)
-                  {
-                      observers.Add(observer);
-                  }
-              
-                  public void Unsubscribe(IObserver observer)
-                  {
-                      observers.Remove(observer);
-                  }
-              
-                  public void NotifyObservers()
-                  {
-                      foreach (var observer in observers)
-                      {
-                          observer.Update();
-                      }
-                  }
-          
-                  // Método estático para obtener la única instancia de StoreManager
-                  public static StoreManager GetInstance(IMobileFactory mobileFactory)
-                  {
-                      // Implementación del patrón Singleton con doble verificación de bloqueo
-                      if (_instance == null)
-                      {
-                          lock (_lock)
-                          {
-                              if (_instance == null)
-                              {
-                                  _instance = new StoreManager(mobileFactory);
-                              }
-                          }
-                      }
-                      return _instance;
-                  }
-          
-                  // Uso del Factory Method para crear un nuevo Mobile
-                  public void AddMobile(string model, string brand, double price, List<string> features)
-                  {
-                      var mobile = _mobileFactory.CreateMobile(model, brand, price, features);
-                      mobiles.Add(mobile);
-                      mobile.PrintDetails();
-                      // Punto 7: Falta de notificación a otros componentes cuando cambia el inventario, causando inconsistencias.
-                      // Solución: Implementar el patrón Observer para que los componentes interesados puedan suscribirse y recibir actualizaciones.
-                      // Se implementaron los métodos Subscribe, Unsubscribe y NotifyObservers en StoreManager,
-                      // y se agregó la notificación al agregar un móvil mediante el método NotifyObservers.
-
-                      NotifyObservers();  // Notificar a los observadores sobre el cambio en el inventario
-                  }
-          
-                  public void PrintAllMobiles()
-                  {
-                      foreach (var mobile in mobiles)
-                      {
-                          mobile.PrintDetails();
-                      }
-                  }
-          
-                  // Numero 2: Método ProcessSale en StoreManager es largo y tiene múltiples responsabilidades, lo que dificulta el mantenimiento
-                  // Solución: Dividir el método en varios métodos más pequeños y específicos, cada uno con una única responsabilidad
-                  // Usando: Single Responsibility Principle (SRP)
-                  // 1. Buscar el móvil
-                  // 2. Verificar si el móvil fue encontrado
-                  // 3. Procesar la venta
-                  public void ProcessSale(string model, int quantity)
-                  {
-                      Mobile mobile = FindMobileByModel(model);
-                      if (mobile != null)
-                      {
-                          ProcessSaleForMobile(mobile, quantity);
-                      }
-                      else
-                      {
-                          HandleMobileNotFound(model);
-                      }
-                  }
-          
-                  // Método para buscar un móvil por su modelo
-                  private Mobile FindMobileByModel(string model)
-                  {
-                      foreach (var mobile in mobiles)
-                      {
-                          if (mobile.Model == model)
-                          {
-                              return mobile;
-                          }
-                      }
-                      return null;
-                  }
-          
-                  // Método para procesar la venta si el móvil fue encontrado
-                  private void ProcessSaleForMobile(Mobile mobile, int quantity)
-                  {
-                      Console.WriteLine($"Processing sale for {quantity} units of {mobile.Model}");
-                      // Código adicional para procesar la venta...
-                  }
-          
-                  // Método para manejar el caso de móvil no encontrado
-                  private void HandleMobileNotFound(string model)
-                  {
-                      Console.WriteLine($"Mobile {model} not found");
-                  }
-              }
-              
-              // Interfaz IObserver que define cómo los componentes observadores recibirán actualizaciones
-              public interface IObserver
-              {
-                  void Update();
-              }
-          
-              // Interfaz ISubject que define cómo el sujeto maneja suscriptores
-              public interface ISubject
-              {
-                  void Subscribe(IObserver observer);
-                  void Unsubscribe(IObserver observer);
-                  void NotifyObservers();
-              }
-              
-              // Punto numero 3: La clase InventoryAndBilling mezcla responsabilidades de inventario y facturación, violando el principio de responsabilidad única
-              // Solución: Separar la clase en dos clases distintas: InventoryManager y BillingManager
-              // Usando: Single Responsibility Principle (SRP)
-          
-              public class InventoryManager
-              {
-                  private List<Mobile> inventory = new List<Mobile>();
-          
-                  // Responsabilidad única: Gestionar el inventario
-                  public void AddToInventory(Mobile mobile)
-                  {
-                      inventory.Add(mobile);
-                      Console.WriteLine($"Mobile {mobile.Model} added to inventory.");
-                  }
-          
-                  public void PrintInventory()
-                  {
-                      Console.WriteLine("Current inventory:");
-                      foreach (var mobile in inventory)
-                      {
-                          mobile.PrintDetails();
-                      }
-                  }
-              }
-          
-              public class BillingManager
-              {
-                  // Responsabilidad única: Gestionar la facturación
-                  public void GenerateBill(Mobile mobile, int quantity)
-                  {
-                      double total = mobile.Price * quantity;
-                      Console.WriteLine($"Bill: {mobile.Model} x{quantity} = {total:C}");
-                  }
-              }
-          
-              // Punto 4: Código acoplado en la clase Promotion, con lógica específica para cada marca dentro del método ApplyDiscount.
-              // Implementar el patrón Strategy creando una interfaz IDiscountStrategy y clases concretas para cada estrategia de descuento.
-              // Interfaz IDiscountStrategy para aplicar el patrón Strategy
-              public interface IDiscountStrategy
-              {
-                  void ApplyDiscount(Mobile mobile);
-              }
-          
-              // Estrategia de descuento para BrandX
-              public class BrandXDiscountStrategy : IDiscountStrategy
-              {
-                  public void ApplyDiscount(Mobile mobile)
-                  {
-                      mobile.Price *= 0.9;
-                      Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
-                  }
-              }
-          
-              // Estrategia de descuento para BrandY
-              public class BrandYDiscountStrategy : IDiscountStrategy
-              {
-                  public void ApplyDiscount(Mobile mobile)
-                  {
-                      mobile.Price *= 0.85;
-                      Console.WriteLine($"Discount applied to {mobile.Model}. New price: {mobile.Price:C}");
-                  }
-              }
-          
-              // Estrategia de descuento predeterminada cuando no hay descuentos disponibles
-              public class NoDiscountStrategy : IDiscountStrategy
-              {
-                  public void ApplyDiscount(Mobile mobile)
-                  {
-                      Console.WriteLine("No discount available for this brand.");
-                  }
-              }
-          
-              // Clase Promotion que utiliza el patrón Strategy para aplicar descuentos
-              public class Promotion
-              {
-                  private IDiscountStrategy _discountStrategy;
-          
-                  // Constructor que permite establecer una estrategia de descuento
-                  public Promotion(IDiscountStrategy discountStrategy)
-                  {
-                      _discountStrategy = discountStrategy;
-                  }
-          
-                  // Método para aplicar el descuento
-                  public void ApplyDiscount(Mobile mobile)
-                  {
-                      _discountStrategy.ApplyDiscount(mobile);
-                  }
+                  // Prueba con el piano
+                  var pianoStore = new MusicStore(new PianoFactory());
+                  pianoStore.PlayInstrument();
               }
           }
 
+          
         owner: ubuntu
         group: ubuntu
         mode: '0644'
