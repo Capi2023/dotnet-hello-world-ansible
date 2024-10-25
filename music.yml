@@ -427,15 +427,15 @@
         dest: /etc/systemd/system/musica.service
         content: |
           [Unit]
-          Description=Cell Shop Application
+          Description=Musica Store Application
           After=network.target
 
           [Service]
-          WorkingDirectory=/home/ubuntu/cell
-          ExecStart=/usr/bin/dotnet /home/ubuntu/cell/bin/Debug/net8.0/cell.dll --urls "http://0.0.0.0:5000"
+          WorkingDirectory=/home/ubuntu/musica
+          ExecStart=/usr/bin/dotnet /home/ubuntu/musica/bin/Debug/net8.0/musica.dll --urls "http://0.0.0.0:5000"
           Restart=always
           RestartSec=10
-          SyslogIdentifier=cell-app
+          SyslogIdentifier=musica-app
           User=ubuntu
           Environment=ASPNETCORE_ENVIRONMENT=Production
 
