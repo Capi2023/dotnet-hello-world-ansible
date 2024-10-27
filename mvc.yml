@@ -1,15 +1,15 @@
 ---
-- name: Instalar .NET Core 8 y configurar la aplicación de musica emiliano garcia cordero
+- name: Install .NET Core 8 and configure the Mobile Store MVC application
   hosts: 127.0.0.1
   connection: local
   become: yes
   tasks:
-    - name: Actualizar el sistema
+    - name: Update the system
       apt:
         update_cache: yes
         upgrade: dist
 
-    - name: Instalando las dependencias
+    - name: Install dependencies
       apt:
         name:
           - apt-transport-https
@@ -18,176 +18,340 @@
           - software-properties-common
         state: present
 
-    - name: Descargar el paquete de repositorio de Microsoft para Ubuntu 22.04 LTS
+    - name: Download Microsoft package repository for Ubuntu 22.04 LTS
       get_url:
         url: https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
         dest: /tmp/packages-microsoft-prod.deb
 
-    - name: Instalar el paquete de repositorio de Microsoft
+    - name: Install Microsoft package repository
       command: dpkg -i /tmp/packages-microsoft-prod.deb
 
-    - name: Actualizar el caché de apt después de agregar el repositorio
+    - name: Update apt cache after adding the repository
       apt:
         update_cache: yes
 
-    - name: Instalar .NET SDK
+    - name: Install .NET SDK
       apt:
         name: dotnet-sdk-8.0
         state: present
 
-    - name: Crear directorio para la aplicación de musica
+    - name: Create directory for the Mobile Store application
       file:
-        path: /home/ubuntu/musica
+        path: /home/ubuntu/mobilestore
         state: directory
         owner: ubuntu
         group: ubuntu
         mode: '0755'
 
-    - name: Crear archivo del proyecto
+    - name: Initialize new MVC project
+      command: dotnet new mvc -n MobileStore
+      args:
+        chdir: /home/ubuntu/mobilestore
+      become_user: ubuntu
+
+    - name: Copy refactored code files
       copy:
-        dest: /home/ubuntu/musica/musica.csproj
-        content: |
-          <Project Sdk="Microsoft.NET.Sdk.Web">
-            <PropertyGroup>
-              <TargetFramework>net8.0</TargetFramework>
-            </PropertyGroup>
-          </Project>
+        dest: "/home/ubuntu/mobilestore/MobileStore/{{ item.dest }}"
+        content: "{{ item.content }}"
         owner: ubuntu
         group: ubuntu
         mode: '0644'
+      loop:
+        - { dest: "Models/Mobile.cs", content: |
+            namespace MobileStore.Models
+            {
+                public class Mobile
+                {
+                    public int Id { get; set; }
+                    public string Name { get; set; }
+                    public decimal Price { get; set; }
+                }
+            }
+          }
+        - { dest: "ViewModels/MobileListViewModel.cs", content: |
+            using System.Collections.Generic;
+            using MobileStore.Models;
 
-    - name: Crear archivo de código fuente Program.cs
-      copy:
-        dest: /home/ubuntu/musica/Program.cs
-        content: |
-          using System;
-          
-          // 1. Abstracción: Crear una interfaz común para todos los instrumentos.
-          // Esto asegura que MusicStore no esté acoplado a implementaciones específicas
-          public interface IInstrument
-          {
-              void Play();
+            namespace MobileStore.ViewModels
+            {
+                public class MobileListViewModel
+                {
+                    public List<Mobile> Mobiles { get; set; }
+                }
+            }
           }
-          
-          // 2. Implementación de la interfaz para la guitarra.
-          public class Guitar : IInstrument
-          {
-              public void Play()
-              {
-                  Console.WriteLine("Playing a guitar.");
-              }
-          }
-          
-          // 3. Implementación de la interfaz para el piano.
-          public class Piano : IInstrument
-          {
-              public void Play()
-              {
-                  Console.WriteLine("Playing a piano.");
-              }
-          }
-          
-          // 4. Aplicación del patrón Factory Method.
-          // Creamos una interfaz de fábrica para desacoplar la creación de instancias de los instrumentos.
-          public interface IInstrumentFactory
-          {
-              IInstrument CreateInstrument();
-          }
-          
-          // 5. Crear una clase de fábrica para la guitarra.
-          // Cada clase de fábrica se encarga de crear el instrumento específico.
-          public class GuitarFactory : IInstrumentFactory
-          {
-              public IInstrument CreateInstrument()
-              {
-                  return new Guitar();
-              }
-          }
-          
-          // 6. Crear una clase de fábrica para el piano.
-          public class PianoFactory : IInstrumentFactory
-          {
-              public IInstrument CreateInstrument()
-              {
-                  return new Piano();
-              }
-          }
-          
-          // 7. Clase MusicStore con bajo acoplamiento y uso del patrón Open/Closed.
-          // Ahora MusicStore no depende de las implementaciones concretas, solo de la interfaz y las fábricas.
-          public class MusicStore
-          {
-              private readonly IInstrumentFactory _instrumentFactory;
-          
-              // 8. Inversión de Dependencias: Inyectamos la fábrica a través del constructor.
-              // Esto hace que las pruebas unitarias sean más sencillas y reduce el acoplamiento.
-              public MusicStore(IInstrumentFactory instrumentFactory)
-              {
-                  _instrumentFactory = instrumentFactory;
-              }
-          
-              // 9. PlayInstrument delega la creación de los instrumentos a la fábrica inyectada.
-              public void PlayInstrument()
-              {
-                  var instrument = _instrumentFactory.CreateInstrument();
-                  instrument.Play();
-              }
-          }
-          
-          // 10. Ejemplo de uso en el Main.
-          // Podemos agregar nuevos instrumentos sin modificar la clase MusicStore.
-          public class Program
-          {
-              public static void Main(string[] args)
-              {
-                  // Prueba con la guitarra
-                  var guitarStore = new MusicStore(new GuitarFactory());
-                  guitarStore.PlayInstrument();
-          
-                  // Prueba con el piano
-                  var pianoStore = new MusicStore(new PianoFactory());
-                  pianoStore.PlayInstrument();
-              }
-          }
+        - { dest: "Interfaces/IMobileService.cs", content: |
+            using System.Collections.Generic;
+            using MobileStore.Models;
 
-          
-        owner: ubuntu
-        group: ubuntu
-        mode: '0644'
+            namespace MobileStore.Interfaces
+            {
+                public interface IMobileService
+                {
+                    List<Mobile> GetAvailableMobiles();
+                    Mobile GetMobileById(int id);
+                }
+            }
+          }
+        - { dest: "Interfaces/ICartService.cs", content: |
+            using System.Collections.Generic;
+            using MobileStore.Models;
 
-    - name: Construir la aplicación de musica
+            namespace MobileStore.Interfaces
+            {
+                public interface ICartService
+                {
+                    void AddToCart(int id);
+                    List<Mobile> GetCart();
+                }
+            }
+          }
+        - { dest: "Interfaces/IMobileFactory.cs", content: |
+            using MobileStore.Models;
+
+            namespace MobileStore.Interfaces
+            {
+                public interface IMobileFactory
+                {
+                    Mobile CreateMobile(int id, string name, decimal price);
+                }
+            }
+          }
+        - { dest: "Factories/MobileFactory.cs", content: |
+            using MobileStore.Interfaces;
+            using MobileStore.Models;
+
+            namespace MobileStore.Factories
+            {
+                public class MobileFactory : IMobileFactory
+                {
+                    public Mobile CreateMobile(int id, string name, decimal price)
+                    {
+                        return new Mobile
+                        {
+                            Id = id,
+                            Name = name,
+                            Price = price
+                        };
+                    }
+                }
+            }
+          }
+        - { dest: "Services/MobileService.cs", content: |
+            using System.Collections.Generic;
+            using System.Linq;
+            using MobileStore.Interfaces;
+            using MobileStore.Models;
+
+            namespace MobileStore.Services
+            {
+                public class MobileService : IMobileService
+                {
+                    private readonly IMobileFactory _mobileFactory;
+
+                    public MobileService(IMobileFactory mobileFactory)
+                    {
+                        _mobileFactory = mobileFactory;
+                    }
+
+                    public List<Mobile> GetAvailableMobiles()
+                    {
+                        return new List<Mobile>
+                        {
+                            _mobileFactory.CreateMobile(1, "iPhone 14", 999),
+                            _mobileFactory.CreateMobile(2, "Samsung Galaxy S23", 899)
+                        };
+                    }
+
+                    public Mobile GetMobileById(int id)
+                    {
+                        return GetAvailableMobiles().FirstOrDefault(m => m.Id == id);
+                    }
+                }
+            }
+          }
+        - { dest: "Services/CartService.cs", content: |
+            using System.Collections.Generic;
+            using Microsoft.AspNetCore.Http;
+            using MobileStore.Interfaces;
+            using MobileStore.Models;
+            using MobileStore.Extensions;
+
+            namespace MobileStore.Services
+            {
+                public class CartService : ICartService
+                {
+                    private readonly IHttpContextAccessor _httpContextAccessor;
+                    private readonly IMobileService _mobileService;
+
+                    public CartService(IHttpContextAccessor httpContextAccessor, IMobileService mobileService)
+                    {
+                        _httpContextAccessor = httpContextAccessor;
+                        _mobileService = mobileService;
+                    }
+
+                    public void AddToCart(int id)
+                    {
+                        var cart = GetCart();
+                        var mobile = _mobileService.GetMobileById(id);
+                        if (mobile != null)
+                        {
+                            cart.Add(mobile);
+                            _httpContextAccessor.HttpContext.Session.SetObjectAsJson("Cart", cart);
+                        }
+                    }
+
+                    public List<Mobile> GetCart()
+                    {
+                        return _httpContextAccessor.HttpContext.Session.GetObjectFromJson<List<Mobile>>("Cart") ?? new List<Mobile>();
+                    }
+                }
+            }
+          }
+        - { dest: "Extensions/SessionExtensions.cs", content: |
+            using Microsoft.AspNetCore.Http;
+            using Newtonsoft.Json;
+
+            namespace MobileStore.Extensions
+            {
+                public static class SessionExtensions
+                {
+                    public static void SetObjectAsJson(this ISession session, string key, object value)
+                    {
+                        session.SetString(key, JsonConvert.SerializeObject(value));
+                    }
+
+                    public static T GetObjectFromJson<T>(this ISession session, string key)
+                    {
+                        var value = session.GetString(key);
+                        return value == null ? default(T) : JsonConvert.DeserializeObject<T>(value);
+                    }
+                }
+            }
+          }
+        - { dest: "Controllers/MobileController.cs", content: |
+            using Microsoft.AspNetCore.Mvc;
+            using MobileStore.Interfaces;
+            using MobileStore.ViewModels;
+
+            namespace MobileStore.Controllers
+            {
+                public class MobileController : Controller
+                {
+                    private readonly IMobileService _mobileService;
+                    private readonly ICartService _cartService;
+
+                    public MobileController(IMobileService mobileService, ICartService cartService)
+                    {
+                        _mobileService = mobileService;
+                        _cartService = cartService;
+                    }
+
+                    public IActionResult Index()
+                    {
+                        var viewModel = new MobileListViewModel
+                        {
+                            Mobiles = _mobileService.GetAvailableMobiles()
+                        };
+                        return View(viewModel);
+                    }
+
+                    public IActionResult AddToCart(int id)
+                    {
+                        _cartService.AddToCart(id);
+                        return RedirectToAction("Index");
+                    }
+                }
+            }
+          }
+        - { dest: "Views/Mobile/Index.cshtml", content: |
+            @model MobileStore.ViewModels.MobileListViewModel
+
+            @{
+                ViewBag.Title = "Tienda de Móviles";
+            }
+
+            <h1>@ViewBag.Title</h1>
+            <ul>
+                @foreach (var mobile in Model.Mobiles)
+                {
+                    <li>@mobile.Name - $@mobile.Price
+                        <a href="@Url.Action("AddToCart", "Mobile", new { id = mobile.Id })">Agregar al carrito</a>
+                    </li>
+                }
+            </ul>
+          }
+      notify: Restart MobileStore service
+
+    - name: Add Newtonsoft.Json package
+      command: dotnet add package Newtonsoft.Json
+      args:
+        chdir: /home/ubuntu/mobilestore/MobileStore
+      become_user: ubuntu
+
+    - name: Add session services to Program.cs
+      blockinfile:
+        path: /home/ubuntu/mobilestore/MobileStore/Program.cs
+        insertafter: 'builder.Services.AddControllersWithViews\(\);'
+        block: |
+          builder.Services.AddHttpContextAccessor();
+          builder.Services.AddSession();
+
+          // Register application services
+          builder.Services.AddScoped<MobileStore.Interfaces.IMobileService, MobileStore.Services.MobileService>();
+          builder.Services.AddScoped<MobileStore.Interfaces.ICartService, MobileStore.Services.CartService>();
+          builder.Services.AddScoped<MobileStore.Interfaces.IMobileFactory, MobileStore.Factories.MobileFactory>();
+
+          // Add Newtonsoft.Json
+          builder.Services.AddControllers().AddNewtonsoftJson();
+
+    - name: Configure middleware in Program.cs
+      blockinfile:
+        path: /home/ubuntu/mobilestore/MobileStore/Program.cs
+        insertafter: 'var app = builder.Build\(\);'
+        block: |
+          // Configure the HTTP request pipeline.
+          app.UseSession();
+
+    - name: Build the application
       command: dotnet build
       args:
-        chdir: /home/ubuntu/musica
+        chdir: /home/ubuntu/mobilestore/MobileStore
       become_user: ubuntu
-  
-    - name: Crear archivo de servicio systemd para la aplicación
+
+    - name: Create systemd service file for the application
       copy:
-        dest: /etc/systemd/system/musica.service
+        dest: /etc/systemd/system/mobilestore.service
         content: |
           [Unit]
-          Description=Musica Store Application
+          Description=Mobile Store MVC Application
           After=network.target
 
           [Service]
-          WorkingDirectory=/home/ubuntu/musica
-          ExecStart=/usr/bin/dotnet /home/ubuntu/musica/bin/Debug/net8.0/musica.dll --urls "http://0.0.0.0:5000"
+          WorkingDirectory=/home/ubuntu/mobilestore/MobileStore
+          ExecStart=/usr/bin/dotnet /home/ubuntu/mobilestore/MobileStore/bin/Debug/net8.0/MobileStore.dll --urls "http://0.0.0.0:5000"
           Restart=always
           RestartSec=10
-          SyslogIdentifier=musica-app
+          SyslogIdentifier=mobilestore-app
           User=ubuntu
           Environment=ASPNETCORE_ENVIRONMENT=Production
 
           [Install]
           WantedBy=multi-user.target
         mode: '0644'
+      notify: Restart MobileStore service
 
-
-    - name: Recargar systemd
+    - name: Reload systemd
       command: systemctl daemon-reload
 
-    - name: Iniciar y habilitar la aplicación musica
+    - name: Start and enable the MobileStore service
       systemd:
-        name: musica.service
+        name: mobilestore.service
         state: started
         enabled: yes
+
+  handlers:
+    - name: Restart MobileStore service
+      systemd:
+        name: mobilestore.service
+        state: restarted
