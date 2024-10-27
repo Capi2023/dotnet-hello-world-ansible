@@ -43,6 +43,24 @@
         group: ubuntu
         mode: '0755'
 
+    - name: Crear los subdirectorios para la aplicacion
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+      loop:
+        - /home/ubuntu/mobilestore/Models
+        - /home/ubuntu/mobilestore/ViewModels
+        - /home/ubuntu/mobilestore/Interfaces
+        - /home/ubuntu/mobilestore/Factories
+        - /home/ubuntu/mobilestore/Services
+        - /home/ubuntu/mobilestore/Controllers
+        - /home/ubuntu/mobilestore/Views
+        - /home/ubuntu/mobilestore/Views/Mobile
+        - /home/ubuntu/mobilestore/Extensions
+
     - name: Crear archivo del proyecto
       copy:
         dest: /home/ubuntu/mobilestore/MobileStore.csproj
