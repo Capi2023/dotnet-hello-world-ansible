@@ -1,1 +1,193 @@
-f
+---
+- name: Instalar .NET Core 8 y configurar la aplicación de musica emiliano garcia cordero
+  hosts: 127.0.0.1
+  connection: local
+  become: yes
+  tasks:
+    - name: Actualizar el sistema
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Instalando las dependencias
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    - name: Descargar el paquete de repositorio de Microsoft para Ubuntu 22.04 LTS
+      get_url:
+        url: https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+        dest: /tmp/packages-microsoft-prod.deb
+
+    - name: Instalar el paquete de repositorio de Microsoft
+      command: dpkg -i /tmp/packages-microsoft-prod.deb
+
+    - name: Actualizar el caché de apt después de agregar el repositorio
+      apt:
+        update_cache: yes
+
+    - name: Instalar .NET SDK
+      apt:
+        name: dotnet-sdk-8.0
+        state: present
+
+    - name: Crear directorio para la aplicación de musica
+      file:
+        path: /home/ubuntu/musica
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Crear archivo del proyecto
+      copy:
+        dest: /home/ubuntu/musica/musica.csproj
+        content: |
+          <Project Sdk="Microsoft.NET.Sdk.Web">
+            <PropertyGroup>
+              <TargetFramework>net8.0</TargetFramework>
+            </PropertyGroup>
+          </Project>
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Crear archivo de código fuente Program.cs
+      copy:
+        dest: /home/ubuntu/musica/Program.cs
+        content: |
+          using System;
+          
+          // 1. Abstracción: Crear una interfaz común para todos los instrumentos.
+          // Esto asegura que MusicStore no esté acoplado a implementaciones específicas
+          public interface IInstrument
+          {
+              void Play();
+          }
+          
+          // 2. Implementación de la interfaz para la guitarra.
+          public class Guitar : IInstrument
+          {
+              public void Play()
+              {
+                  Console.WriteLine("Playing a guitar.");
+              }
+          }
+          
+          // 3. Implementación de la interfaz para el piano.
+          public class Piano : IInstrument
+          {
+              public void Play()
+              {
+                  Console.WriteLine("Playing a piano.");
+              }
+          }
+          
+          // 4. Aplicación del patrón Factory Method.
+          // Creamos una interfaz de fábrica para desacoplar la creación de instancias de los instrumentos.
+          public interface IInstrumentFactory
+          {
+              IInstrument CreateInstrument();
+          }
+          
+          // 5. Crear una clase de fábrica para la guitarra.
+          // Cada clase de fábrica se encarga de crear el instrumento específico.
+          public class GuitarFactory : IInstrumentFactory
+          {
+              public IInstrument CreateInstrument()
+              {
+                  return new Guitar();
+              }
+          }
+          
+          // 6. Crear una clase de fábrica para el piano.
+          public class PianoFactory : IInstrumentFactory
+          {
+              public IInstrument CreateInstrument()
+              {
+                  return new Piano();
+              }
+          }
+          
+          // 7. Clase MusicStore con bajo acoplamiento y uso del patrón Open/Closed.
+          // Ahora MusicStore no depende de las implementaciones concretas, solo de la interfaz y las fábricas.
+          public class MusicStore
+          {
+              private readonly IInstrumentFactory _instrumentFactory;
+          
+              // 8. Inversión de Dependencias: Inyectamos la fábrica a través del constructor.
+              // Esto hace que las pruebas unitarias sean más sencillas y reduce el acoplamiento.
+              public MusicStore(IInstrumentFactory instrumentFactory)
+              {
+                  _instrumentFactory = instrumentFactory;
+              }
+          
+              // 9. PlayInstrument delega la creación de los instrumentos a la fábrica inyectada.
+              public void PlayInstrument()
+              {
+                  var instrument = _instrumentFactory.CreateInstrument();
+                  instrument.Play();
+              }
+          }
+          
+          // 10. Ejemplo de uso en el Main.
+          // Podemos agregar nuevos instrumentos sin modificar la clase MusicStore.
+          public class Program
+          {
+              public static void Main(string[] args)
+              {
+                  // Prueba con la guitarra
+                  var guitarStore = new MusicStore(new GuitarFactory());
+                  guitarStore.PlayInstrument();
+          
+                  // Prueba con el piano
+                  var pianoStore = new MusicStore(new PianoFactory());
+                  pianoStore.PlayInstrument();
+              }
+          }
+
+          
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Construir la aplicación de musica
+      command: dotnet build
+      args:
+        chdir: /home/ubuntu/musica
+      become_user: ubuntu
+  
+    - name: Crear archivo de servicio systemd para la aplicación
+      copy:
+        dest: /etc/systemd/system/musica.service
+        content: |
+          [Unit]
+          Description=Musica Store Application
+          After=network.target
+
+          [Service]
+          WorkingDirectory=/home/ubuntu/musica
+          ExecStart=/usr/bin/dotnet /home/ubuntu/musica/bin/Debug/net8.0/musica.dll --urls "http://0.0.0.0:5000"
+          Restart=always
+          RestartSec=10
+          SyslogIdentifier=musica-app
+          User=ubuntu
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+
+    - name: Recargar systemd
+      command: systemctl daemon-reload
+
+    - name: Iniciar y habilitar la aplicación musica
+      systemd:
+        name: musica.service
+        state: started
+        enabled: yes
