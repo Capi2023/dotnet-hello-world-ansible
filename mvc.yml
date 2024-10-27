@@ -1,15 +1,15 @@
 ---
-- name: Install .NET Core 8 and configure the Mobile Store MVC application
+- name: Instalar .NET Core 8 and configurar la aplicacion de tienda movil MVC - 20211779
   hosts: 127.0.0.1
   connection: local
   become: yes
   tasks:
-    - name: Update the system
+    - name: Actualizar el sistema
       apt:
         update_cache: yes
         upgrade: dist
 
-    - name: Install dependencies
+    - name: Instalar dependencias
       apt:
         name:
           - apt-transport-https
@@ -18,24 +18,24 @@
           - software-properties-common
         state: present
 
-    - name: Download Microsoft package repository for Ubuntu 22.04 LTS
+    - name: Descargar el paquete de microsoft del repo de Ubuntu 24.04 LTS
       get_url:
-        url: https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+        url: https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb
         dest: /tmp/packages-microsoft-prod.deb
 
-    - name: Install Microsoft package repository
+    - name: Instalar los paquetes de Microsoft
       command: dpkg -i /tmp/packages-microsoft-prod.deb
 
-    - name: Update apt cache after adding the repository
+    - name: Actualizar el cache
       apt:
         update_cache: yes
 
-    - name: Install .NET SDK
+    - name: Instalar .NET SDK
       apt:
         name: dotnet-sdk-8.0
         state: present
 
-    - name: Create directory for the Mobile Store application
+    - name: Crear directorio para la aplicacion
       file:
         path: /home/ubuntu/mobilestore
         state: directory
@@ -43,283 +43,383 @@
         group: ubuntu
         mode: '0755'
 
-    - name: Initialize new MVC project
-      command: dotnet new mvc -n MobileStore
-      args:
-        chdir: /home/ubuntu/mobilestore
-      become_user: ubuntu
-
-    - name: Copy refactored code files
+    - name: Crear archivo del proyecto
       copy:
-        dest: "/home/ubuntu/mobilestore/MobileStore/{{ item.dest }}"
-        content: "{{ item.content }}"
+        dest: /home/ubuntu/mobilestore/MobileStore.csproj
+        content: |
+          <Project Sdk="Microsoft.NET.Sdk.Web">
+            <PropertyGroup>
+              <TargetFramework>net8.0</TargetFramework>
+            </PropertyGroup>
+          </Project>
         owner: ubuntu
         group: ubuntu
         mode: '0644'
-      loop:
-        - { dest: "Models/Mobile.cs", content: |
-            namespace MobileStore.Models
-            {
-                public class Mobile
-                {
-                    public int Id { get; set; }
-                    public string Name { get; set; }
-                    public decimal Price { get; set; }
-                }
-            }
-          }
-        - { dest: "ViewModels/MobileListViewModel.cs", content: |
-            using System.Collections.Generic;
-            using MobileStore.Models;
 
-            namespace MobileStore.ViewModels
-            {
-                public class MobileListViewModel
-                {
-                    public List<Mobile> Mobiles { get; set; }
-                }
-            }
-          }
-        - { dest: "Interfaces/IMobileService.cs", content: |
-            using System.Collections.Generic;
-            using MobileStore.Models;
+    - name: Crear el Program.cs
+      copy:
+        dest: /home/ubuntu/mobilestore/Program.cs
+        content: |
+          using Microsoft.AspNetCore.Builder;
+          using Microsoft.Extensions.DependencyInjection;
+          using Microsoft.Extensions.Hosting;
+          using MobileStore.Interfaces;
+          using MobileStore.Services;
+          using MobileStore.Factories;
+          using Newtonsoft.Json;
 
-            namespace MobileStore.Interfaces
-            {
-                public interface IMobileService
-                {
-                    List<Mobile> GetAvailableMobiles();
-                    Mobile GetMobileById(int id);
-                }
-            }
-          }
-        - { dest: "Interfaces/ICartService.cs", content: |
-            using System.Collections.Generic;
-            using MobileStore.Models;
+          var builder = WebApplication.CreateBuilder(args);
 
-            namespace MobileStore.Interfaces
-            {
-                public interface ICartService
-                {
-                    void AddToCart(int id);
-                    List<Mobile> GetCart();
-                }
-            }
-          }
-        - { dest: "Interfaces/IMobileFactory.cs", content: |
-            using MobileStore.Models;
-
-            namespace MobileStore.Interfaces
-            {
-                public interface IMobileFactory
-                {
-                    Mobile CreateMobile(int id, string name, decimal price);
-                }
-            }
-          }
-        - { dest: "Factories/MobileFactory.cs", content: |
-            using MobileStore.Interfaces;
-            using MobileStore.Models;
-
-            namespace MobileStore.Factories
-            {
-                public class MobileFactory : IMobileFactory
-                {
-                    public Mobile CreateMobile(int id, string name, decimal price)
-                    {
-                        return new Mobile
-                        {
-                            Id = id,
-                            Name = name,
-                            Price = price
-                        };
-                    }
-                }
-            }
-          }
-        - { dest: "Services/MobileService.cs", content: |
-            using System.Collections.Generic;
-            using System.Linq;
-            using MobileStore.Interfaces;
-            using MobileStore.Models;
-
-            namespace MobileStore.Services
-            {
-                public class MobileService : IMobileService
-                {
-                    private readonly IMobileFactory _mobileFactory;
-
-                    public MobileService(IMobileFactory mobileFactory)
-                    {
-                        _mobileFactory = mobileFactory;
-                    }
-
-                    public List<Mobile> GetAvailableMobiles()
-                    {
-                        return new List<Mobile>
-                        {
-                            _mobileFactory.CreateMobile(1, "iPhone 14", 999),
-                            _mobileFactory.CreateMobile(2, "Samsung Galaxy S23", 899)
-                        };
-                    }
-
-                    public Mobile GetMobileById(int id)
-                    {
-                        return GetAvailableMobiles().FirstOrDefault(m => m.Id == id);
-                    }
-                }
-            }
-          }
-        - { dest: "Services/CartService.cs", content: |
-            using System.Collections.Generic;
-            using Microsoft.AspNetCore.Http;
-            using MobileStore.Interfaces;
-            using MobileStore.Models;
-            using MobileStore.Extensions;
-
-            namespace MobileStore.Services
-            {
-                public class CartService : ICartService
-                {
-                    private readonly IHttpContextAccessor _httpContextAccessor;
-                    private readonly IMobileService _mobileService;
-
-                    public CartService(IHttpContextAccessor httpContextAccessor, IMobileService mobileService)
-                    {
-                        _httpContextAccessor = httpContextAccessor;
-                        _mobileService = mobileService;
-                    }
-
-                    public void AddToCart(int id)
-                    {
-                        var cart = GetCart();
-                        var mobile = _mobileService.GetMobileById(id);
-                        if (mobile != null)
-                        {
-                            cart.Add(mobile);
-                            _httpContextAccessor.HttpContext.Session.SetObjectAsJson("Cart", cart);
-                        }
-                    }
-
-                    public List<Mobile> GetCart()
-                    {
-                        return _httpContextAccessor.HttpContext.Session.GetObjectFromJson<List<Mobile>>("Cart") ?? new List<Mobile>();
-                    }
-                }
-            }
-          }
-        - { dest: "Extensions/SessionExtensions.cs", content: |
-            using Microsoft.AspNetCore.Http;
-            using Newtonsoft.Json;
-
-            namespace MobileStore.Extensions
-            {
-                public static class SessionExtensions
-                {
-                    public static void SetObjectAsJson(this ISession session, string key, object value)
-                    {
-                        session.SetString(key, JsonConvert.SerializeObject(value));
-                    }
-
-                    public static T GetObjectFromJson<T>(this ISession session, string key)
-                    {
-                        var value = session.GetString(key);
-                        return value == null ? default(T) : JsonConvert.DeserializeObject<T>(value);
-                    }
-                }
-            }
-          }
-        - { dest: "Controllers/MobileController.cs", content: |
-            using Microsoft.AspNetCore.Mvc;
-            using MobileStore.Interfaces;
-            using MobileStore.ViewModels;
-
-            namespace MobileStore.Controllers
-            {
-                public class MobileController : Controller
-                {
-                    private readonly IMobileService _mobileService;
-                    private readonly ICartService _cartService;
-
-                    public MobileController(IMobileService mobileService, ICartService cartService)
-                    {
-                        _mobileService = mobileService;
-                        _cartService = cartService;
-                    }
-
-                    public IActionResult Index()
-                    {
-                        var viewModel = new MobileListViewModel
-                        {
-                            Mobiles = _mobileService.GetAvailableMobiles()
-                        };
-                        return View(viewModel);
-                    }
-
-                    public IActionResult AddToCart(int id)
-                    {
-                        _cartService.AddToCart(id);
-                        return RedirectToAction("Index");
-                    }
-                }
-            }
-          }
-        - { dest: "Views/Mobile/Index.cshtml", content: |
-            @model MobileStore.ViewModels.MobileListViewModel
-
-            @{
-                ViewBag.Title = "Tienda de Móviles";
-            }
-
-            <h1>@ViewBag.Title</h1>
-            <ul>
-                @foreach (var mobile in Model.Mobiles)
-                {
-                    <li>@mobile.Name - $@mobile.Price
-                        <a href="@Url.Action("AddToCart", "Mobile", new { id = mobile.Id })">Agregar al carrito</a>
-                    </li>
-                }
-            </ul>
-          }
-      notify: Restart MobileStore service
-
-    - name: Add Newtonsoft.Json package
-      command: dotnet add package Newtonsoft.Json
-      args:
-        chdir: /home/ubuntu/mobilestore/MobileStore
-      become_user: ubuntu
-
-    - name: Add session services to Program.cs
-      blockinfile:
-        path: /home/ubuntu/mobilestore/MobileStore/Program.cs
-        insertafter: 'builder.Services.AddControllersWithViews\(\);'
-        block: |
+          // Add services to the container.
+          builder.Services.AddControllersWithViews();
           builder.Services.AddHttpContextAccessor();
           builder.Services.AddSession();
 
           // Register application services
-          builder.Services.AddScoped<MobileStore.Interfaces.IMobileService, MobileStore.Services.MobileService>();
-          builder.Services.AddScoped<MobileStore.Interfaces.ICartService, MobileStore.Services.CartService>();
-          builder.Services.AddScoped<MobileStore.Interfaces.IMobileFactory, MobileStore.Factories.MobileFactory>();
+          builder.Services.AddScoped<IMobileService, MobileService>();
+          builder.Services.AddScoped<ICartService, CartService>();
+          builder.Services.AddScoped<IMobileFactory, MobileFactory>();
 
-          // Add Newtonsoft.Json
           builder.Services.AddControllers().AddNewtonsoftJson();
 
-    - name: Configure middleware in Program.cs
-      blockinfile:
-        path: /home/ubuntu/mobilestore/MobileStore/Program.cs
-        insertafter: 'var app = builder.Build\(\);'
-        block: |
+          var app = builder.Build();
+
           // Configure the HTTP request pipeline.
+          if (!app.Environment.IsDevelopment())
+          {
+              app.UseExceptionHandler("/Home/Error");
+              app.UseHsts();
+          }
+
+          app.UseHttpsRedirection();
+          app.UseStaticFiles();
+
+          app.UseRouting();
+
+          app.UseAuthorization();
+
           app.UseSession();
 
-    - name: Build the application
-      command: dotnet build
+          app.MapControllerRoute(
+              name: "default",
+              pattern: "{controller=Mobile}/{action=Index}/{id?}");
+
+          app.Run();
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: El codigo
+      block:
+        - name: Create Models/Mobile.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Models/Mobile.cs
+            content: |
+              namespace MobileStore.Models
+              {
+                  public class Mobile
+                  {
+                      public int Id { get; set; }
+                      public string Name { get; set; }
+                      public decimal Price { get; set; }
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear el ViewModels/MobileListViewModel.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/ViewModels/MobileListViewModel.cs
+            content: |
+              using System.Collections.Generic;
+              using MobileStore.Models;
+
+              namespace MobileStore.ViewModels
+              {
+                  public class MobileListViewModel
+                  {
+                      public List<Mobile> Mobiles { get; set; }
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear el Interfaces/IMobileService.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Interfaces/IMobileService.cs
+            content: |
+              using System.Collections.Generic;
+              using MobileStore.Models;
+
+              namespace MobileStore.Interfaces
+              {
+                  public interface IMobileService
+                  {
+                      List<Mobile> GetAvailableMobiles();
+                      Mobile GetMobileById(int id);
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear Interfaces/ICartService.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Interfaces/ICartService.cs
+            content: |
+              using System.Collections.Generic;
+              using MobileStore.Models;
+
+              namespace MobileStore.Interfaces
+              {
+                  public interface ICartService
+                  {
+                      void AddToCart(int id);
+                      List<Mobile> GetCart();
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear Interfaces/IMobileFactory.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Interfaces/IMobileFactory.cs
+            content: |
+              using MobileStore.Models;
+
+              namespace MobileStore.Interfaces
+              {
+                  public interface IMobileFactory
+                  {
+                      Mobile CreateMobile(int id, string name, decimal price);
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear Factories/MobileFactory.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Factories/MobileFactory.cs
+            content: |
+              using MobileStore.Interfaces;
+              using MobileStore.Models;
+
+              namespace MobileStore.Factories
+              {
+                  public class MobileFactory : IMobileFactory
+                  {
+                      public Mobile CreateMobile(int id, string name, decimal price)
+                      {
+                          return new Mobile
+                          {
+                              Id = id,
+                              Name = name,
+                              Price = price
+                          };
+                      }
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear Services/MobileService.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Services/MobileService.cs
+            content: |
+              using System.Collections.Generic;
+              using System.Linq;
+              using MobileStore.Interfaces;
+              using MobileStore.Models;
+
+              namespace MobileStore.Services
+              {
+                  public class MobileService : IMobileService
+                  {
+                      private readonly IMobileFactory _mobileFactory;
+
+                      public MobileService(IMobileFactory mobileFactory)
+                      {
+                          _mobileFactory = mobileFactory;
+                      }
+
+                      public List<Mobile> GetAvailableMobiles()
+                      {
+                          return new List<Mobile>
+                          {
+                              _mobileFactory.CreateMobile(1, "iPhone 14", 999),
+                              _mobileFactory.CreateMobile(2, "Samsung Galaxy S23", 899)
+                          };
+                      }
+
+                      public Mobile GetMobileById(int id)
+                      {
+                          return GetAvailableMobiles().FirstOrDefault(m => m.Id == id);
+                      }
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear Services/CartService.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Services/CartService.cs
+            content: |
+              using System.Collections.Generic;
+              using Microsoft.AspNetCore.Http;
+              using MobileStore.Interfaces;
+              using MobileStore.Models;
+              using MobileStore.Extensions;
+
+              namespace MobileStore.Services
+              {
+                  public class CartService : ICartService
+                  {
+                      private readonly IHttpContextAccessor _httpContextAccessor;
+                      private readonly IMobileService _mobileService;
+
+                      public CartService(IHttpContextAccessor httpContextAccessor, IMobileService mobileService)
+                      {
+                          _httpContextAccessor = httpContextAccessor;
+                          _mobileService = mobileService;
+                      }
+
+                      public void AddToCart(int id)
+                      {
+                          var cart = GetCart();
+                          var mobile = _mobileService.GetMobileById(id);
+                          if (mobile != null)
+                          {
+                              cart.Add(mobile);
+                              _httpContextAccessor.HttpContext.Session.SetObjectAsJson("Cart", cart);
+                          }
+                      }
+
+                      public List<Mobile> GetCart()
+                      {
+                          return _httpContextAccessor.HttpContext.Session.GetObjectFromJson<List<Mobile>>("Cart") ?? new List<Mobile>();
+                      }
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear Extensions/SessionExtensions.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Extensions/SessionExtensions.cs
+            content: |
+              using Microsoft.AspNetCore.Http;
+              using Newtonsoft.Json;
+
+              namespace MobileStore.Extensions
+              {
+                  public static class SessionExtensions
+                  {
+                      public static void SetObjectAsJson(this ISession session, string key, object value)
+                      {
+                          session.SetString(key, JsonConvert.SerializeObject(value));
+                      }
+
+                      public static T GetObjectFromJson<T>(this ISession session, string key)
+                      {
+                          var value = session.GetString(key);
+                          return value == null ? default(T) : JsonConvert.DeserializeObject<T>(value);
+                      }
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear Controllers/MobileController.cs
+          copy:
+            dest: /home/ubuntu/mobilestore/Controllers/MobileController.cs
+            content: |
+              using Microsoft.AspNetCore.Mvc;
+              using MobileStore.Interfaces;
+              using MobileStore.ViewModels;
+
+              namespace MobileStore.Controllers
+              {
+                  public class MobileController : Controller
+                  {
+                      private readonly IMobileService _mobileService;
+                      private readonly ICartService _cartService;
+
+                      public MobileController(IMobileService mobileService, ICartService cartService)
+                      {
+                          _mobileService = mobileService;
+                          _cartService = cartService;
+                      }
+
+                      public IActionResult Index()
+                      {
+                          var viewModel = new MobileListViewModel
+                          {
+                              Mobiles = _mobileService.GetAvailableMobiles()
+                          };
+                          return View(viewModel);
+                      }
+
+                      public IActionResult AddToCart(int id)
+                      {
+                          _cartService.AddToCart(id);
+                          return RedirectToAction("Index");
+                      }
+                  }
+              }
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+        - name: Crear Views/Mobile/Index.cshtml
+          copy:
+            dest: /home/ubuntu/mobilestore/Views/Mobile/Index.cshtml
+            content: |
+              @model MobileStore.ViewModels.MobileListViewModel
+
+              @{
+                  ViewBag.Title = "Tienda de Móviles";
+              }
+
+              <h1>@ViewBag.Title</h1>
+              <ul>
+                  @foreach (var mobile in Model.Mobiles)
+                  {
+                      <li>@mobile.Name - $@mobile.Price
+                          <a href="@Url.Action("AddToCart", "Mobile", new { id = mobile.Id })">Agregar al carrito</a>
+                      </li>
+                  }
+              </ul>
+            owner: ubuntu
+            group: ubuntu
+            mode: '0644'
+
+    - name: Añadir el paquete Newtonsoft.Json
+      command: dotnet add package Newtonsoft.Json
       args:
-        chdir: /home/ubuntu/mobilestore/MobileStore
+        chdir: /home/ubuntu/mobilestore
       become_user: ubuntu
 
-    - name: Create systemd service file for the application
+    - name: Restaurar el paquete NuGet
+      command: dotnet restore
+      args:
+        chdir: /home/ubuntu/mobilestore
+      become_user: ubuntu
+
+    - name: Crear aplicacion
+      command: dotnet build
+      args:
+        chdir: /home/ubuntu/mobilestore
+      become_user: ubuntu
+
+    - name: Crear los servicios para la aplicacion
       copy:
         dest: /etc/systemd/system/mobilestore.service
         content: |
@@ -328,8 +428,8 @@
           After=network.target
 
           [Service]
-          WorkingDirectory=/home/ubuntu/mobilestore/MobileStore
-          ExecStart=/usr/bin/dotnet /home/ubuntu/mobilestore/MobileStore/bin/Debug/net8.0/MobileStore.dll --urls "http://0.0.0.0:5000"
+          WorkingDirectory=/home/ubuntu/mobilestore
+          ExecStart=/usr/bin/dotnet /home/ubuntu/mobilestore/bin/Debug/net8.0/MobileStore.dll --urls "http://0.0.0.0:5000"
           Restart=always
           RestartSec=10
           SyslogIdentifier=mobilestore-app
@@ -339,19 +439,12 @@
           [Install]
           WantedBy=multi-user.target
         mode: '0644'
-      notify: Restart MobileStore service
 
-    - name: Reload systemd
+    - name: Resetear el systemd
       command: systemctl daemon-reload
 
-    - name: Start and enable the MobileStore service
+    - name: Empezar el MobileStore service
       systemd:
         name: mobilestore.service
         state: started
         enabled: yes
-
-  handlers:
-    - name: Restart MobileStore service
-      systemd:
-        name: mobilestore.service
-        state: restarted
