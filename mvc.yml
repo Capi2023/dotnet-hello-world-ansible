@@ -85,6 +85,7 @@
           using MobileStore.Services;
           using MobileStore.Factories;
           using Newtonsoft.Json;
+          using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 
           var builder = WebApplication.CreateBuilder(args);
 
@@ -420,7 +421,7 @@
             mode: '0644'
 
     - name: Añadir el paquete Newtonsoft.Json
-      command: dotnet add package Newtonsoft.Json
+      command: dotnet add package Microsoft.AspNetCore.Mvc.NewtonsoftJson
       args:
         chdir: /home/ubuntu/mobilestore
       become_user: ubuntu
